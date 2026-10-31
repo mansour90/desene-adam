@@ -162,6 +162,7 @@ function coloringSearchPlugin() {
 
 // https://vite.dev/config/
 export default defineConfig({
+  base: '/desene-adam/', // <-- Adăugat pentru a asigura căile corecte pe GitHub Pages
   plugins: [
     react(),
     coloringSearchPlugin(),
