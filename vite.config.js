@@ -14,19 +14,28 @@ function coloringSearchPlugin() {
         // Endpoint: /api/search-images?q=...
         if (parsedUrl.pathname === '/api/search-images') {
           const rawQ = parsedUrl.searchParams.get('q') || 'spongebob';
+          const mode = parsedUrl.searchParams.get('mode') === 'color' ? 'color' : 'lineart';
           try {
             let q = rawQ.trim();
-            // Asigurăm căutarea exactă a planșelor de colorat / line art
-            if (!/coloring|colouring|de colorat|planse|line art/i.test(q)) {
-              q += ' coloring pages';
-            } else if (/de colorat/i.test(q)) {
-              q = q.replace(/de colorat/i, '').trim() + ' coloring pages';
+            if (mode === 'color') {
+              q = q
+                .replace(/\b(coloring|colouring)\s*(pages?|sheets?)?\b/gi, '')
+                .replace(/\b(de colorat|planse)\b/gi, '')
+                .trim();
+              q += ' colored illustration';
+            } else {
+              if (!/coloring|colouring|de colorat|planse|line art/i.test(q)) {
+                q += ' coloring pages';
+              } else if (/de colorat/i.test(q)) {
+                q = q.replace(/de colorat/i, '').trim() + ' coloring pages';
+              }
             }
 
             // Filtrare presetată identică cu Google Images:
             // filterui:imagesize-large -> Dimensiune "Mari"
             // filterui:photo-linedrawing -> Tip "Desen cu linii" (doar desene de colorat alb-negru)
-            const searchUrl = `https://www.bing.com/images/search?q=${encodeURIComponent(q)}&qft=+filterui:imagesize-large+filterui:photo-linedrawing&form=IRFLTR&first=1`;
+            const imageTypeFilter = mode === 'color' ? 'filterui:color2-color' : 'filterui:photo-linedrawing';
+            const searchUrl = `https://www.bing.com/images/search?q=${encodeURIComponent(q)}&qft=+filterui:imagesize-large+${imageTypeFilter}&form=IRFLTR&first=1`;
             
             const searchRes = await fetch(searchUrl, {
               headers: {

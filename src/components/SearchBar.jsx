@@ -1,12 +1,8 @@
 import React, { useState, useEffect } from 'react';
 import { Search, X } from 'lucide-react';
-import VoiceButton from './VoiceButton';
-import VoiceModal from './VoiceModal';
-import { useSpeechRecognition } from '../hooks/useSpeechRecognition';
 
 export default function SearchBar({ onSearch, currentQuery }) {
   const [inputValue, setInputValue] = useState(currentQuery || '');
-  const [isVoiceModalOpen, setIsVoiceModalOpen] = useState(false);
 
   // Când query-ul se schimbă extern, actualizăm câmpul
   useEffect(() => {
@@ -14,28 +10,6 @@ export default function SearchBar({ onSearch, currentQuery }) {
       setInputValue(currentQuery);
     }
   }, [currentQuery]);
-
-  // Hook pentru recunoașterea vocală
-  const {
-    isListening,
-    errorInfo,
-    startListening,
-    stopListening
-  } = useSpeechRecognition({
-    onResult: (spokenText) => {
-      setInputValue(spokenText);
-      setIsVoiceModalOpen(false);
-      // Pornim căutarea automat după recunoaștere
-      if (onSearch) {
-        onSearch(spokenText);
-      }
-    }
-  });
-
-  const handleToggleVoice = () => {
-    setIsVoiceModalOpen(true);
-    startListening();
-  };
 
   const handleSubmit = (e) => {
     e.preventDefault();
@@ -46,14 +20,6 @@ export default function SearchBar({ onSearch, currentQuery }) {
 
   const handleClear = () => {
     setInputValue('');
-  };
-
-  const handleSelectQuickVoice = (text) => {
-    setInputValue(text);
-    setIsVoiceModalOpen(false);
-    if (onSearch) {
-      onSearch(text);
-    }
   };
 
   return (
@@ -91,26 +57,7 @@ export default function SearchBar({ onSearch, currentQuery }) {
           </button>
         </div>
 
-        {/* Buton mare cu microfon */}
-        <VoiceButton
-          isListening={isListening}
-          onToggle={handleToggleVoice}
-        />
       </form>
-
-      {/* Modal Asistent Vocal & Diagnostic */}
-      <VoiceModal
-        isOpen={isVoiceModalOpen}
-        onClose={() => {
-          stopListening();
-          setIsVoiceModalOpen(false);
-        }}
-        isListening={isListening}
-        errorInfo={errorInfo}
-        onStartListening={startListening}
-        onStopListening={stopListening}
-        onSelectSuggestion={handleSelectQuickVoice}
-      />
     </div>
   );
 }

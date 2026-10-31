@@ -1,53 +1,26 @@
-import React from 'react';
+import React, { useState } from 'react';
 import ImageCard from './ImageCard';
-import { Loader2, Sparkles, Frown, CheckSquare, SlidersHorizontal } from 'lucide-react';
+import { Loader2, Frown, LayoutGrid, List, Contrast, Palette } from 'lucide-react';
+import { getImageCollectionKey } from '../utils/imageCollections';
 
 export default function ImageGallery({
   images,
-  suggestions,
   isLoading,
   error,
   query,
+  imageMode,
+  onImageModeChange,
+  favorites = [],
+  queue = [],
+  onToggleFavorite,
+  onToggleQueue,
   onSearchQuery,
   onSelectImage
 }) {
+  const [columnsPerRow, setColumnsPerRow] = useState(2);
+
   return (
     <section className="google-gallery-section" aria-label="Rezultate căutare imagini de colorat">
-      {/* Bara de sugestii stil Google Images (orizontală, scrollable) */}
-      {suggestions && suggestions.length > 0 && (
-        <div className="google-suggestions-bar">
-          <div className="google-suggestions-scroll">
-            {suggestions.map((sug, idx) => (
-              <button
-                key={idx}
-                type="button"
-                className="google-sug-chip"
-                onClick={() => onSearchQuery(sug)}
-              >
-                <span>{sug}</span>
-              </button>
-            ))}
-          </div>
-        </div>
-      )}
-
-      {/* Indicator presetare dimensiune și tip (exact ca în Google Images Instrumente > Mari & Doar de colorat) */}
-      <div className="google-tools-indicator">
-        <div className="tools-badge-group">
-          <span className="tool-active-pill">
-            <CheckSquare size={14} className="tool-check" />
-            Dimensiune: <strong>Mari</strong>
-          </span>
-          <span className="tool-active-pill">
-            <CheckSquare size={14} className="tool-check" />
-            Tip: <strong>Doar de colorat (Line art)</strong>
-          </span>
-        </div>
-        <span className="google-results-count">
-          {images.length > 0 ? `${images.length} planșe de rezoluție mare găsite` : ''}
-        </span>
-      </div>
-
       {/* Stare 1: Se încarcă rezultatele */}
       {isLoading && (
         <div className="google-gallery-state">
@@ -98,15 +71,68 @@ export default function ImageGallery({
 
       {/* Stare 4: Grid-ul dens de imagini stil Google Images */}
       {!isLoading && !error && images.length > 0 && (
-        <div className="google-image-grid">
-          {images.map((image) => (
-            <ImageCard
-              key={image.id}
-              image={image}
-              onClick={onSelectImage}
-            />
-          ))}
-        </div>
+        <>
+          <div className="gallery-layout-controls">
+            <div className="gallery-layout-toggle" role="group" aria-label="Număr de poze pe rând">
+              <button
+                type="button"
+                className={`gallery-layout-button ${columnsPerRow === 2 ? 'active' : ''}`}
+                onClick={() => setColumnsPerRow(2)}
+                aria-label="Afișează două poze pe rând"
+                title="Două poze pe rând"
+                aria-pressed={columnsPerRow === 2}
+              >
+                <LayoutGrid size={18} />
+              </button>
+              <button
+                type="button"
+                className={`gallery-layout-button ${columnsPerRow === 1 ? 'active' : ''}`}
+                onClick={() => setColumnsPerRow(1)}
+                aria-label="Afișează o poză pe rând"
+                title="O poză pe rând"
+                aria-pressed={columnsPerRow === 1}
+              >
+                <List size={18} />
+              </button>
+            </div>
+            <div className="gallery-mode-toggle" role="group" aria-label="Tipul desenelor">
+              <button
+                type="button"
+                className={`gallery-layout-button ${imageMode === 'lineart' ? 'active' : ''}`}
+                onClick={() => onImageModeChange('lineart')}
+                aria-label="Rezultate alb-negru"
+                title="Alb-negru"
+                aria-pressed={imageMode === 'lineart'}
+              >
+                <Contrast size={20} />
+              </button>
+              <button
+                type="button"
+                className={`gallery-layout-button ${imageMode === 'color' ? 'active' : ''}`}
+                onClick={() => onImageModeChange('color')}
+                aria-label="Rezultate colorate"
+                title="Colorate"
+                aria-pressed={imageMode === 'color'}
+              >
+                <Palette size={20} />
+              </button>
+            </div>
+          </div>
+          <div className={`google-image-grid ${columnsPerRow === 1 ? 'is-single-column' : 'is-two-columns'}`}>
+            {images.map((image) => (
+              <ImageCard
+                key={image.id}
+                image={image}
+                imageMode={imageMode}
+                onClick={onSelectImage}
+                isFavorite={favorites.some((item) => item.key === getImageCollectionKey(image))}
+                onToggleFavorite={onToggleFavorite}
+                isQueued={queue.some((item) => item.key === getImageCollectionKey(image))}
+                onToggleQueue={onToggleQueue}
+              />
+            ))}
+          </div>
+        </>
       )}
     </section>
   );

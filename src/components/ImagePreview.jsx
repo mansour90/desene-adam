@@ -1,21 +1,25 @@
-import React, { useState } from 'react';
+import React, { useRef, useState } from 'react';
 import {
   ArrowLeft,
-  Download,
   CloudUpload,
   CheckCircle,
   AlertCircle,
   Loader2,
-  ExternalLink,
-  ShieldAlert
+  ShieldAlert,
+  X,
+  ChevronLeft,
+  ChevronRight
 } from 'lucide-react';
 import confetti from 'canvas-confetti';
-import { downloadColoringDrawingAsJpg } from '../services/imageDownload';
+import { prepareColoringDrawingForDrive } from '../services/imageDownload';
 import { uploadDrawingToGoogleDrive, isGoogleDriveConnected } from '../services/googleDrive';
-import { isImageSavedInSession } from '../utils/fileUtils';
+import { isImageSavedInSession, markImageSavedInSession } from '../utils/fileUtils';
 
 export default function ImagePreview({
   image,
+  images = [],
+  imageMode = 'lineart',
+  onSelectImage,
   onClose,
   isGoogleConnected,
   onOpenParentSettings
@@ -24,12 +28,94 @@ export default function ImagePreview({
   const [uploadProgress, setUploadProgress] = useState(0);
   const [statusMessage, setStatusMessage] = useState(null);
   const [saveSuccess, setSaveSuccess] = useState(false);
-  const [driveResult, setDriveResult] = useState(null);
   const [alreadySavedWarning, setAlreadySavedWarning] = useState(false);
+  const touchStartX = useRef(null);
 
   if (!image) return null;
 
-  const isAlreadySaved = isImageSavedInSession(image.id);
+  const isAlreadySaved = isImageSavedInSession(image);
+
+  const navigateImage = (direction) => {
+    if (images.length < 2) return;
+    const currentIndex = images.findIndex((item) => item.id === image.id);
+    const safeIndex = currentIndex < 0 ? 0 : currentIndex;
+    const nextIndex = (safeIndex + direction + images.length) % images.length;
+    onSelectImage?.(images[nextIndex]);
+  };
+
+  const handleTouchStart = (event) => {
+    touchStartX.current = event.changedTouches[0].clientX;
+  };
+
+  const handleTouchEnd = (event) => {
+    if (touchStartX.current === null) return;
+    const distance = event.changedTouches[0].clientX - touchStartX.current;
+    touchStartX.current = null;
+
+    if (Math.abs(distance) < 50) return;
+    navigateImage(distance < 0 ? 1 : -1);
+  };
+
+  if (imageMode === 'color') {
+    return (
+      <div
+        className="color-viewer-overlay"
+        role="dialog"
+        aria-modal="true"
+        aria-label="Vizualizare imagine colorată"
+        onTouchStart={handleTouchStart}
+        onTouchEnd={handleTouchEnd}
+        onKeyDown={(event) => {
+          if (event.key === 'Escape') onClose();
+          if (event.key === 'ArrowRight') navigateImage(1);
+          if (event.key === 'ArrowLeft') navigateImage(-1);
+        }}
+        tabIndex={-1}
+      >
+        <button
+          type="button"
+          className="color-viewer-close"
+          onClick={onClose}
+          aria-label="Închide imaginea"
+          title="Închide"
+        >
+          <X size={26} />
+        </button>
+        {images.length > 1 && (
+          <>
+            <button
+              type="button"
+              className="color-viewer-nav color-viewer-prev"
+              onClick={() => navigateImage(-1)}
+              aria-label="Imaginea anterioară"
+              title="Imaginea anterioară"
+            >
+              <ChevronLeft size={32} />
+            </button>
+            <button
+              type="button"
+              className="color-viewer-nav color-viewer-next"
+              onClick={() => navigateImage(1)}
+              aria-label="Imaginea următoare"
+              title="Imaginea următoare"
+            >
+              <ChevronRight size={32} />
+            </button>
+          </>
+        )}
+        <img
+          src={image.originalUrl || image.previewUrl}
+          alt={image.title}
+          className="color-viewer-image"
+          onError={(event) => {
+            if (event.currentTarget.src !== image.previewUrl) {
+              event.currentTarget.src = image.previewUrl;
+            }
+          }}
+        />
+      </div>
+    );
+  }
 
   // Declanșare confetti festiv pentru copil la salvare cu succes
   const triggerCelebration = () => {
@@ -50,34 +136,32 @@ export default function ImagePreview({
       return;
     }
 
+    const googleActive = isGoogleConnected || isGoogleDriveConnected();
+    if (!googleActive) {
+      setSaveSuccess(false);
+      setStatusMessage('Conectează Google Drive din Mod Părinte înainte de a trimite desenul.');
+      return;
+    }
+
     setAlreadySavedWarning(false);
     setIsProcessing(true);
     setUploadProgress(10);
     setStatusMessage('Pregătim desenul în format JPG...');
+    setSaveSuccess(false);
 
     try {
-      // 1. Convertim și descărcăm imaginea JPG local pe dispozitiv
-      const downloadResult = await downloadColoringDrawingAsJpg(image, true);
-      const { fileName, blob } = downloadResult;
+      const { fileName, blob } = await prepareColoringDrawingForDrive(image);
 
       setUploadProgress(40);
 
-      // 2. Dacă Google Drive este conectat, încărcăm și în cloud în folderul sesiunii
-      const googleActive = isGoogleConnected || isGoogleDriveConnected();
-
-      if (googleActive && blob) {
-        setStatusMessage('Încărcăm desenul în Google Drive...');
-        const driveUpload = await uploadDrawingToGoogleDrive(
-          blob,
-          fileName,
-          (percent) => setUploadProgress(percent)
-        );
-        setDriveResult(driveUpload);
-        setStatusMessage(`Salvat cu succes în Google Drive (${driveUpload.folderName}) și pe dispozitiv!`);
-      } else {
-        setUploadProgress(100);
-        setStatusMessage('Desen salvat cu succes pe dispozitivul tău!');
-      }
+      setStatusMessage('Încărcăm desenul în Google Drive...');
+      const driveUpload = await uploadDrawingToGoogleDrive(
+        blob,
+        fileName,
+        (percent) => setUploadProgress(percent)
+      );
+      markImageSavedInSession(image);
+      setStatusMessage(`Trimis cu succes în Google Drive (${driveUpload.folderName})!`);
 
       setSaveSuccess(true);
       triggerCelebration();
@@ -161,6 +245,13 @@ export default function ImagePreview({
           </div>
         )}
 
+        {!isProcessing && statusMessage && !saveSuccess && (
+          <div className="preview-error-banner" role="alert">
+            <AlertCircle size={24} />
+            <p>{statusMessage}</p>
+          </div>
+        )}
+
         {/* Mesaj de succes */}
         {saveSuccess && !isProcessing && (
           <div className="preview-success-banner">
@@ -188,12 +279,12 @@ export default function ImagePreview({
             ) : saveSuccess ? (
               <>
                 <CheckCircle size={36} />
-                <span>DESEN SALVAT! (SALVEAZĂ DIN NOU)</span>
+                <span>TRIMIS ÎN DRIVE! (TRIMITE DIN NOU)</span>
               </>
             ) : (
               <>
-                <Download size={36} />
-                <span>SALVEAZĂ DESENUL</span>
+                <CloudUpload size={36} />
+                <span>TRIMITE ÎN GOOGLE DRIVE</span>
               </>
             )}
           </button>

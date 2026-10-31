@@ -51,7 +51,7 @@ Aplicație web progresivă (PWA) modernă, intuitivă și veselă, special conce
 
 7. **Mod Părinte discret (Protejat cu PIN):**
    - Accesibil discret din colțul ecranului.
-   - Protecție cu PIN numeric (PIN prestabilit: `1234`).
+   - Protecție cu PIN numeric (PIN prestabilit: `290590`).
    - Conectare / deconectare cont Google prin Google Identity Services.
    - Buton de testare a conexiunii Google Drive.
    - Posibilitate de schimbare a PIN-ului și de resetare a sesiunii curente.
@@ -101,5 +101,5 @@ Pentru a activa sincronizarea automată în Google Drive:
    - Tip: **Web application**
    - Origini JavaScript autorizate: `http://localhost:5173` și `http://127.0.0.1:5173`
 6. Copiază **Client ID**-ul generat (format `xxx.apps.googleusercontent.com`).
-7. Deschide în aplicație **Mod Părinte** (PIN: `1234`), lipește Client ID-ul în câmpul dedicat și apasă **Salvează**, apoi apasă **Conectează contul Google**.
+7. Deschide în aplicație **Mod Părinte** (PIN: `290590`), lipește Client ID-ul în câmpul dedicat și apasă **Salvează**, apoi apasă **Conectează contul Google**.
 *(Alternativ, poți introduce `VITE_GOOGLE_CLIENT_ID=xxx` în fișierul `.env`).*

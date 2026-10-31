@@ -5,8 +5,15 @@
 
 // Memorie sesiune pentru desene deja descărcate/salvate
 const savedImageIds = new Set();
+const SAVED_IMAGE_KEYS_STORAGE_KEY = 'desene_adam_saved_image_keys';
 // Contor pentru numărul fișierelor per categorie/termen în sesiune
 const termCounters = new Map();
+
+function getImageIdentityKeys(imageOrId) {
+  if (typeof imageOrId === 'string') return [imageOrId];
+  if (!imageOrId) return [];
+  return [imageOrId.originalUrl, imageOrId.previewUrl, imageOrId.id].filter(Boolean).map(String);
+}
 
 /**
  * Elimină diacriticele și caracterele speciale pentru a crea un nume sigur de fișier
@@ -45,17 +52,33 @@ export function generateFileName(term, extension = 'jpg') {
  * @param {string} imageId 
  * @returns {boolean}
  */
-export function isImageSavedInSession(imageId) {
-  return savedImageIds.has(imageId);
+export function isImageSavedInSession(imageOrId) {
+  const keys = getImageIdentityKeys(imageOrId);
+  if (keys.some((key) => savedImageIds.has(key))) return true;
+
+  try {
+    const savedKeys = JSON.parse(localStorage.getItem(SAVED_IMAGE_KEYS_STORAGE_KEY) || '[]');
+    return keys.some((key) => savedKeys.includes(key));
+  } catch {
+    return false;
+  }
 }
 
 /**
  * Marchează o imagine ca fiind salvată în această sesiune
  * @param {string} imageId 
  */
-export function markImageSavedInSession(imageId) {
-  if (imageId) {
-    savedImageIds.add(imageId);
+export function markImageSavedInSession(imageOrId) {
+  const keys = getImageIdentityKeys(imageOrId);
+  if (!keys.length) return;
+
+  keys.forEach((key) => savedImageIds.add(key));
+  try {
+    const storedKeys = JSON.parse(localStorage.getItem(SAVED_IMAGE_KEYS_STORAGE_KEY) || '[]');
+    const mergedKeys = [...new Set([...storedKeys, ...keys])];
+    localStorage.setItem(SAVED_IMAGE_KEYS_STORAGE_KEY, JSON.stringify(mergedKeys));
+  } catch (error) {
+    console.error('Nu s-a putut salva lista desenelor trimise:', error);
   }
 }
 

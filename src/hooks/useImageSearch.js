@@ -14,7 +14,7 @@ export function useImageSearch() {
 
   const searchIdRef = useRef(0);
 
-  const search = useCallback(async (searchQuery) => {
+  const search = useCallback(async (searchQuery, mode = 'lineart') => {
     const trimmed = (searchQuery || '').trim();
     if (!trimmed) return;
 
@@ -26,7 +26,7 @@ export function useImageSearch() {
     setSuggestions(getRelatedSuggestions(trimmed));
 
     try {
-      const result = await searchColoringImages(trimmed, 0);
+      const result = await searchColoringImages(trimmed, 0, mode);
       if (searchIdRef.current === currentSearchId) {
         setImages(result.items);
         if (result.suggestions && result.suggestions.length > 0) {

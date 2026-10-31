@@ -30,7 +30,7 @@ import {
 import { resetSessionFolder, getOrCreateSessionFolderName } from '../utils/dateFolders';
 
 const STORAGE_KEY_PIN = 'desene_adam_parent_pin';
-const DEFAULT_PIN = '1234';
+const DEFAULT_PIN = '290590';
 
 export default function ParentSettings({ isOpen, onClose, onAuthChanged }) {
   const [pinInput, setPinInput] = useState('');
@@ -217,14 +217,14 @@ export default function ParentSettings({ isOpen, onClose, onAuthChanged }) {
                   maxLength={6}
                   value={pinInput}
                   onChange={(e) => setPinInput(e.target.value)}
-                  placeholder="PIN (implicit 1234)"
+                  placeholder="PIN"
                   className={`pin-text-input ${pinError ? 'pin-error' : ''}`}
                   autoFocus
                 />
               </div>
 
               {pinError && (
-                <p className="pin-error-msg">Cod PIN incorect. PIN-ul prestabilit este 1234.</p>
+                <p className="pin-error-msg">Cod PIN incorect. PIN-ul prestabilit este 290590.</p>
               )}
 
               {/* Tastatură numerică mare ușor de utilizat pe ecran tactil */}
@@ -291,7 +291,7 @@ export default function ParentSettings({ isOpen, onClose, onAuthChanged }) {
                 onClick={() => setActiveTab('history')}
               >
                 <History size={18} />
-                <span>Istoric Salvări ({recentSaves.length})</span>
+                <span>Trimise în Google Drive ({recentSaves.length})</span>
               </button>
               <button
                 type="button"
@@ -443,7 +443,7 @@ export default function ParentSettings({ isOpen, onClose, onAuthChanged }) {
               {activeTab === 'history' && (
                 <div className="tab-pane-history">
                   <div className="history-header-row">
-                    <h4>Ultimele desene salvate</h4>
+                    <h4>Desene trimise în Google Drive</h4>
                     {recentSaves.length > 0 && (
                       <button
                         type="button"
@@ -457,7 +457,7 @@ export default function ParentSettings({ isOpen, onClose, onAuthChanged }) {
 
                   {recentSaves.length === 0 ? (
                     <div className="history-empty-state">
-                      <p>Nu există încă salvări înregistrate.</p>
+                      <p>Nu există încă desene trimise în Google Drive.</p>
                     </div>
                   ) : (
                     <div className="history-list-table">
@@ -469,7 +469,10 @@ export default function ParentSettings({ isOpen, onClose, onAuthChanged }) {
                           </div>
                           <div className="history-col-meta">
                             <span className="item-date">
-                              {new Date(item.date).toLocaleString('ro-RO')}
+                              {new Date(item.date).toLocaleDateString('ro-RO', {
+                                day: '2-digit',
+                                month: '2-digit'
+                              }).replace(/\.$/, '')}
                             </span>
                             {item.webViewLink && (
                               <a
@@ -495,7 +498,7 @@ export default function ParentSettings({ isOpen, onClose, onAuthChanged }) {
                   <form onSubmit={handleChangePin} className="pin-change-form">
                     <h4>Schimbare cod PIN Părinte</h4>
                     <p className="field-help-text">
-                      PIN-ul implicit este <code>1234</code>. Alegeți un cod din minim 4 cifre pentru a preveni accesul copilului la aceste setări.
+                      PIN-ul implicit este <code>290590</code>. Alegeți un cod din minim 4 cifre pentru a preveni accesul copilului la aceste setări.
                     </p>
 
                     <div className="settings-field-group">

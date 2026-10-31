@@ -3,7 +3,7 @@
  * și descărcarea desenelor pentru copii (compatibil mobile & desktop).
  */
 
-import { generateFileName, isImageSavedInSession, markImageSavedInSession } from '../utils/fileUtils';
+import { generateFileName } from '../utils/fileUtils';
 
 /**
  * Încarcă o imagine într-un element HTMLImageElement cu suport CORS
@@ -15,7 +15,7 @@ function loadImage(url) {
     const img = new Image();
     img.crossOrigin = 'anonymous';
     img.onload = () => resolve(img);
-    img.onerror = (e) => reject(new Error('Nu s-a putut încărca imaginea pentru procesare.'));
+    img.onerror = () => reject(new Error('Nu s-a putut încărca imaginea pentru procesare.'));
     img.src = url;
   });
 }
@@ -89,58 +89,19 @@ export async function convertToJpgBlob(imageUrl, quality = 0.95) {
 }
 
 /**
- * Descarcă direct fișierul JPG în memoria dispozitivului (telefon/tabletă/PC)
- * @param {Blob} blob - Fișierul imagine JPG
- * @param {string} fileName - Numele fișierului (ex: dinozaur_01.jpg)
- */
-export function triggerFileDownload(blob, fileName) {
-  const url = URL.createObjectURL(blob);
-  const anchor = document.createElement('a');
-  anchor.href = url;
-  anchor.download = fileName;
-  anchor.style.display = 'none';
-
-  document.body.appendChild(anchor);
-  anchor.click();
-
-  // Curățare memorie după descărcare
-  setTimeout(() => {
-    document.body.removeChild(anchor);
-    URL.revokeObjectURL(url);
-  }, 1500);
-}
-
-/**
- * Procesează și descarcă un desen ca JPG, generând nume prietenos și evitând duplicatele
+ * Pregătește un desen JPG pentru încărcarea în Google Drive
  * @param {Object} imageItem - Obiectul imaginii selectate
- * @param {boolean} [force=false] - Forțează descărcarea chiar dacă a fost salvat anterior
- * @returns {Promise<{ fileName: string, blob: Blob, alreadySaved: boolean }>}
+ * @returns {Promise<{ fileName: string, blob: Blob }>}
  */
-export async function downloadColoringDrawingAsJpg(imageItem, force = false) {
-  const isDuplicate = isImageSavedInSession(imageItem.id);
-  if (isDuplicate && !force) {
-    return {
-      fileName: '',
-      blob: null,
-      alreadySaved: true
-    };
-  }
-
+export async function prepareColoringDrawingForDrive(imageItem) {
   // URL-ul sursă: folosim proxyUrl sau originalUrl
   const targetUrl = imageItem.proxyUrl || imageItem.originalUrl || imageItem.previewUrl;
 
   const { blob } = await convertToJpgBlob(targetUrl, 0.95);
   const fileName = generateFileName(imageItem.searchTerm || imageItem.title || 'desen', 'jpg');
 
-  // Marcăm ca salvat în această sesiune
-  markImageSavedInSession(imageItem.id);
-
-  // Declanșăm salvarea locală pe dispozitiv
-  triggerFileDownload(blob, fileName);
-
   return {
     fileName,
-    blob,
-    alreadySaved: false
+    blob
   };
 }

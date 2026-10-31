@@ -58,7 +58,7 @@ export function getRelatedSuggestions(query) {
  * @param {number} [offset=0]
  * @returns {Promise<{ items: Array, suggestions: string[], total: number }>}
  */
-export async function searchColoringImages(query, offset = 0) {
+export async function searchColoringImages(query, offset = 0, mode = 'lineart') {
   if (!query || !query.trim()) {
     return { items: [], suggestions: [], total: 0 };
   }
@@ -71,7 +71,7 @@ export async function searchColoringImages(query, offset = 0) {
   // proxy-ul Bing rulează doar în dev-server local.
   if (!import.meta.env.PROD) {
     try {
-      const apiRes = await fetch(`/api/search-images?q=${encodeURIComponent(cleanQuery)}&offset=${offset}`);
+      const apiRes = await fetch(`/api/search-images?q=${encodeURIComponent(cleanQuery)}&offset=${offset}&mode=${mode}`);
       if (apiRes.ok) {
         const data = await apiRes.json();
         if (data.items && data.items.length > 0) {
@@ -92,7 +92,8 @@ export async function searchColoringImages(query, offset = 0) {
     const endpoint = new URL('https://commons.wikimedia.org/w/api.php');
     endpoint.searchParams.set('action', 'query');
     endpoint.searchParams.set('generator', 'search');
-    endpoint.searchParams.set('gsrsearch', `${cleanQuery} coloring page`);
+    const modeQuery = mode === 'color' ? 'colored coloring page' : 'coloring page';
+    endpoint.searchParams.set('gsrsearch', `${cleanQuery} ${modeQuery}`);
     endpoint.searchParams.set('gsrnamespace', '6');
     endpoint.searchParams.set('gsrlimit', '30');
     endpoint.searchParams.set('prop', 'imageinfo');
