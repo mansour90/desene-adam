@@ -65,88 +65,28 @@ export async function searchColoringImages(query, offset = 0, mode = 'lineart') 
 
   const cleanQuery = query.trim();
   const suggestions = getRelatedSuggestions(cleanQuery);
+  const workerBaseUrl = (import.meta.env.VITE_IMAGE_SEARCH_API_URL || '').trim().replace(/\/+$/, '');
 
-  // 1. Încercăm endpoint-ul de căutare web cu preset "Mari"
-  // Pe producție (GitHub Pages) sărim direct la fallback Wikimedia —
-  // proxy-ul Bing rulează doar în dev-server local.
-  if (!import.meta.env.PROD) {
-    try {
-      const apiRes = await fetch(`/api/search-images?q=${encodeURIComponent(cleanQuery)}&offset=${offset}&mode=${mode}`);
-      if (apiRes.ok) {
-        const data = await apiRes.json();
-        if (data.items && data.items.length > 0) {
-          return {
-            items: data.items,
-            suggestions,
-            total: data.total || data.items.length
-          };
-        }
-      }
-    } catch (err) {
-      console.warn('Endpoint-ul local de căutare a întâmpinat o eroare, folosim fallback Wikimedia:', err);
-    }
+  if (import.meta.env.PROD && !workerBaseUrl) {
+    throw new Error('Căutarea Bing nu este configurată. Adaugă VITE_IMAGE_SEARCH_API_URL în GitHub Actions.');
   }
 
-  // 2. Fallback: Wikimedia Commons API cu filtrare pentru rezoluție mare (width >= 800)
-  try {
-    const endpoint = new URL('https://commons.wikimedia.org/w/api.php');
-    endpoint.searchParams.set('action', 'query');
-    endpoint.searchParams.set('generator', 'search');
-    const modeQuery = mode === 'color' ? 'colored coloring page' : 'coloring page';
-    endpoint.searchParams.set('gsrsearch', `${cleanQuery} ${modeQuery}`);
-    endpoint.searchParams.set('gsrnamespace', '6');
-    endpoint.searchParams.set('gsrlimit', '30');
-    endpoint.searchParams.set('prop', 'imageinfo');
-    endpoint.searchParams.set('iiprop', 'url|size|mime|extmetadata');
-    endpoint.searchParams.set('iiurlwidth', '800');
-    endpoint.searchParams.set('format', 'json');
-    endpoint.searchParams.set('origin', '*');
+  const endpoint = workerBaseUrl
+    ? new URL('/api/search-images', `${workerBaseUrl}/`)
+    : new URL('/api/search-images', window.location.origin);
+  endpoint.searchParams.set('q', cleanQuery);
+  endpoint.searchParams.set('offset', String(offset));
+  endpoint.searchParams.set('mode', mode);
 
-    const res = await fetch(endpoint.toString(), {
-      headers: {
-        'Api-User-Agent': 'DeseneAdamKidsApp/1.0 (contact@desene-adam.app)'
-      }
-    });
-
-    const data = await res.json();
-    const rawPages = Object.values(data.query?.pages || {});
-
-    const items = rawPages
-      .filter(p => {
-        const info = p.imageinfo?.[0];
-        if (!info) return false;
-        // Doar imagini cu dimensiune mare (peste 750px)
-        const w = info.width || 0;
-        const h = info.height || 0;
-        return (w >= 750 || h >= 750) && (info.mime || '').startsWith('image/');
-      })
-      .map(p => {
-        const info = p.imageinfo[0];
-        let title = p.title.replace(/^File:/i, '').replace(/\.[a-z0-9]+$/i, '').replace(/coloring/gi, '').trim();
-        return {
-          id: String(p.pageid),
-          title: title || `${cleanQuery} de colorat`,
-          rawTitle: p.title,
-          searchTerm: cleanQuery,
-          previewUrl: info.thumburl || info.url,
-          originalUrl: info.url,
-          proxyUrl: info.url,
-          width: info.width,
-          height: info.height,
-          mime: info.mime,
-          license: `Dimensiune mare (${info.width} × ${info.height})`,
-          artist: 'Wikimedia Commons',
-          sourceUrl: p.descriptionurl || `https://commons.wikimedia.org/wiki/${encodeURIComponent(p.title)}`
-        };
-      });
-
-    return {
-      items,
-      suggestions,
-      total: items.length
-    };
-  } catch (e) {
-    console.error('Fallback eșuat:', e);
-    return { items: [], suggestions, total: 0 };
+  const response = await fetch(endpoint.toString());
+  const data = await response.json().catch(() => ({}));
+  if (!response.ok) {
+    throw new Error(data.error || `Căutarea Bing a eșuat (HTTP ${response.status}).`);
   }
+
+  return {
+    items: Array.isArray(data.items) ? data.items : [],
+    suggestions,
+    total: Number(data.total) || 0
+  };
 }

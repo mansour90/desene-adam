@@ -29,6 +29,7 @@ export function useImageSearch() {
       const result = await searchColoringImages(trimmed, 0, mode);
       if (searchIdRef.current === currentSearchId) {
         setImages(result.items);
+        setError(result.error || null);
         if (result.suggestions && result.suggestions.length > 0) {
           setSuggestions(result.suggestions);
         }
@@ -36,7 +37,7 @@ export function useImageSearch() {
       }
     } catch (err) {
       if (searchIdRef.current === currentSearchId) {
-        setError('A apărut o problemă la căutarea desenelor. Te rugăm să încerci din nou!');
+        setError(err.message || 'Căutarea imaginilor nu a reușit. Te rugăm să încerci din nou.');
         setIsLoading(false);
       }
     }

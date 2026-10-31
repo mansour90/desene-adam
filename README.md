@@ -11,11 +11,10 @@ Aplicație web progresivă (PWA) modernă, intuitivă și veselă, special conce
    - Butoane mari, colțuri rotunjite, pictograme mari și font rotunjit (`Fredoka` & `Nunito`).
    - Fără reclame, fără linkuri externe către internet accesibile copilului.
 
-2. **Căutare Reală de Imagini Alb-Negru:**
-   - Integrare directă cu **Wikimedia Commons API** (CORS origin=*, mii de desene libere de drepturi).
-   - Filtrare strictă a fotografiilor și a conținutului nepotrivit.
-   - Dicționar integrat română-engleză pentru traducerea termenilor căutați de copii.
-   - Păstrarea licențelor (Public Domain, Creative Commons) și a atribuirii autorilor.
+2. **Căutare Bing Images:**
+   - Bing Images este apelat printr-un Cloudflare Worker, astfel încât căutarea funcționează și pe GitHub Pages fără apeluri browser blocate de CORS.
+   - Moduri separate pentru planșe alb-negru și imagini colorate, cu filtrul Bing de dimensiune mare.
+   - Worker-ul proxy-uiește imaginile originale cu URL-uri semnate temporar pentru conversia și trimiterea în Drive.
 
 3. **Căutare Vocală în Limba Română (`ro-RO`):**
    - Folosește **Web Speech API**.
@@ -103,3 +102,16 @@ Pentru a activa sincronizarea automată în Google Drive:
 6. Copiază **Client ID**-ul generat (format `xxx.apps.googleusercontent.com`).
 7. Deschide în aplicație **Mod Părinte** (PIN: `290590`), lipește Client ID-ul în câmpul dedicat și apasă **Salvează**, apoi apasă **Conectează contul Google**.
 *(Alternativ, poți introduce `VITE_GOOGLE_CLIENT_ID=xxx` în fișierul `.env`).*
+
+## ☁️ Configurare căutare Bing pe GitHub Pages
+
+GitHub Pages servește fișiere statice și nu poate rula middleware-ul Vite. Căutarea Bing publică folosește un Cloudflare Worker separat:
+
+1. Instalează Node.js și rulează `npx wrangler login` din folderul proiectului.
+2. Creează un secret pentru semnarea URL-urilor proxy: `npx wrangler secret put IMAGE_PROXY_SECRET --config cloudflare/wrangler.toml`. Introdu o valoare aleatoare lungă când Wrangler o cere; nu o salva în Git și nu o trimite în chat.
+3. Publică Worker-ul: `npx wrangler deploy --config cloudflare/wrangler.toml`.
+4. Copiază URL-ul Worker afișat la deploy, de forma `https://desene-adam-bing-search.<subdomain>.workers.dev`.
+5. În GitHub, deschide **Settings → Secrets and variables → Actions → New repository secret** și adaugă `VITE_IMAGE_SEARCH_API_URL` cu acel URL.
+6. La următorul push pe `main`, workflow-ul reconstruiește aplicația folosind Worker-ul.
+
+Originea publică `https://mansour90.github.io` și originile locale de dezvoltare sunt deja permise în `cloudflare/wrangler.toml`. Dacă domeniul site-ului se schimbă, actualizează `ALLOWED_ORIGINS` și redeployează Worker-ul. Configurația completă se află în [cloudflare/README.md](cloudflare/README.md).
