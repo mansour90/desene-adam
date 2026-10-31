@@ -67,20 +67,24 @@ export async function searchColoringImages(query, offset = 0) {
   const suggestions = getRelatedSuggestions(cleanQuery);
 
   // 1. Încercăm endpoint-ul de căutare web cu preset "Mari"
-  try {
-    const apiRes = await fetch(`/api/search-images?q=${encodeURIComponent(cleanQuery)}&offset=${offset}`);
-    if (apiRes.ok) {
-      const data = await apiRes.json();
-      if (data.items && data.items.length > 0) {
-        return {
-          items: data.items,
-          suggestions,
-          total: data.total || data.items.length
-        };
+  // Pe producție (GitHub Pages) sărim direct la fallback Wikimedia —
+  // proxy-ul Bing rulează doar în dev-server local.
+  if (!import.meta.env.PROD) {
+    try {
+      const apiRes = await fetch(`/api/search-images?q=${encodeURIComponent(cleanQuery)}&offset=${offset}`);
+      if (apiRes.ok) {
+        const data = await apiRes.json();
+        if (data.items && data.items.length > 0) {
+          return {
+            items: data.items,
+            suggestions,
+            total: data.total || data.items.length
+          };
+        }
       }
+    } catch (err) {
+      console.warn('Endpoint-ul local de căutare a întâmpinat o eroare, folosim fallback Wikimedia:', err);
     }
-  } catch (err) {
-    console.warn('Endpoint-ul local de căutare a întâmpinat o eroare, folosim fallback Wikimedia:', err);
   }
 
   // 2. Fallback: Wikimedia Commons API cu filtrare pentru rezoluție mare (width >= 800)

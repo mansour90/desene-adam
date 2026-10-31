@@ -3,6 +3,7 @@ import react from '@vitejs/plugin-react';
 import { VitePWA } from 'vite-plugin-pwa';
 
 // Plugin middleware pentru căutare web stil Google Images la dimensiune mare ("Mari" + "Desen cu linii")
+// NOTĂ: Rulează DOAR în dev-server local. Pe producție (GitHub Pages) se folosește fallback Wikimedia.
 function coloringSearchPlugin() {
   return {
     name: 'coloring-search-proxy',
@@ -161,8 +162,9 @@ function coloringSearchPlugin() {
 }
 
 // https://vite.dev/config/
+// base: '/desene-adam/' este obligatoriu pentru GitHub Pages (sub-path deployment)
 export default defineConfig({
-  base: '/desene-adam/', // <-- Adăugat pentru a asigura căile corecte pe GitHub Pages
+  base: '/desene-adam/',
   plugins: [
     react(),
     coloringSearchPlugin(),
@@ -177,22 +179,23 @@ export default defineConfig({
         background_color: '#f8fafc',
         display: 'standalone',
         orientation: 'portrait',
-        start_url: '/',
+        start_url: '/desene-adam/',
+        scope: '/desene-adam/',
         icons: [
           {
-            src: '/pwa-192x192.png',
+            src: '/desene-adam/pwa-192x192.png',
             sizes: '192x192',
             type: 'image/png',
             purpose: 'any'
           },
           {
-            src: '/pwa-512x512.png',
+            src: '/desene-adam/pwa-512x512.png',
             sizes: '512x512',
             type: 'image/png',
             purpose: 'any'
           },
           {
-            src: '/pwa-512x512.png',
+            src: '/desene-adam/pwa-512x512.png',
             sizes: '512x512',
             type: 'image/png',
             purpose: 'maskable'

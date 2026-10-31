@@ -1,0 +1,55 @@
+name: Deploy Desene Adam → GitHub Pages
+
+on:
+  push:
+    branches: [main]
+  workflow_dispatch:
+
+# Permisiuni necesare pentru a scrie pe gh-pages
+permissions:
+  contents: read
+  pages: write
+  id-token: write
+
+# Permite un singur deployment simultan
+concurrency:
+  group: 'pages'
+  cancel-in-progress: true
+
+jobs:
+  build-and-deploy:
+    runs-on: ubuntu-latest
+    environment:
+      name: github-pages
+      url: ${{ steps.deployment.outputs.page_url }}
+
+    steps:
+      - name: Checkout cod sursă
+        uses: actions/checkout@v4
+
+      - name: Configurare Node.js 20
+        uses: actions/setup-node@v4
+        with:
+          node-version: '20'
+          cache: 'npm'
+
+      - name: Instalare dependențe
+        run: npm ci
+
+      - name: Build producție
+        run: npm run build
+        env:
+          # Adaugă VITE_GOOGLE_CLIENT_ID în Settings → Secrets → Actions
+          VITE_GOOGLE_CLIENT_ID: ${{ secrets.VITE_GOOGLE_CLIENT_ID }}
+
+      - name: Configurare GitHub Pages
+        uses: actions/configure-pages@v4
+
+      - name: Upload artifact build
+        uses: actions/upload-pages-artifact@v3
+        with:
+          path: './dist'
+
+      - name: Deploy pe GitHub Pages
+        id: deployment
+        uses: actions/deploy-pages@v4
