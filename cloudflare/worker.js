@@ -107,6 +107,7 @@ async function searchImages(request, env) {
 
   const query = normalizeSearchQuery(rawQuery, mode);
   const imageTypeFilter = mode === 'color' ? 'filterui:color2-color' : 'filterui:photo-linedrawing';
+  const lineArtPattern = /\b(coloring pages?|colouring pages?|coloring books?|colouring books?|line art|line drawing|outline|black and white|black-and-white|b&w|bw\d*)\b/i;
   const searchBing = async (filter) => {
     const bingUrl = new URL('https://www.bing.com/images/async');
     bingUrl.searchParams.set('q', query);
@@ -138,13 +139,16 @@ async function searchImages(request, env) {
     };
   };
 
-  const mapMatchesToItems = async (matches) => {
+  const mapMatchesToItems = async (matches, requireModeMatch = false) => {
     const seenUrls = new Set();
     const items = [];
 
     for (const [index, match] of matches.entries()) {
       const parsed = decodeBingImageResult(match[1]);
       if (!parsed?.murl || seenUrls.has(parsed.murl)) continue;
+      const description = [parsed.t, parsed.desc, parsed.purl].filter(Boolean).join(' ');
+      if (requireModeMatch && mode === 'lineart' && !lineArtPattern.test(description)) continue;
+      if (requireModeMatch && mode === 'color' && lineArtPattern.test(description)) continue;
 
       let originalUrl;
       try {
@@ -202,12 +206,20 @@ async function searchImages(request, env) {
     return items;
   };
 
-  let { error: bingError, matches } = await searchBing(`+filterui:imagesize-large+${imageTypeFilter}`);
+  const strictSearch = await searchBing(`+filterui:imagesize-large+${imageTypeFilter}`);
+  let bingError = strictSearch.error;
+  let items = [];
   if (bingError) {
     return jsonResponse(request, env, { error: `Bing a răspuns cu HTTP ${bingError}.`, items: [] }, 502);
   }
 
-  const items = await mapMatchesToItems(matches);
+  items = await mapMatchesToItems(strictSearch.matches);
+  if (!items.length) {
+    const broadSearch = await searchBing('');
+    if (!broadSearch.error) {
+      items = await mapMatchesToItems(broadSearch.matches, true);
+    }
+  }
 
   return jsonResponse(request, env, { items, total: items.length });
 }

@@ -77,7 +77,11 @@ test('Bing line-art search never returns generic images when its strict filter h
     const url = new URL(String(input));
     requestCount += 1;
     assert.equal(url.pathname, '/images/async');
-    assert.match(url.searchParams.get('qft'), /photo-linedrawing/);
+    if (requestCount === 1) {
+      assert.match(url.searchParams.get('qft'), /photo-linedrawing/);
+    } else {
+      assert.equal(url.searchParams.has('qft'), false);
+    }
     return new Response('<html></html>', { status: 200 });
   };
 
@@ -88,7 +92,63 @@ test('Bing line-art search never returns generic images when its strict filter h
   const body = await response.json();
 
   assert.equal(response.status, 200);
-  assert.equal(requestCount, 1);
+  assert.equal(requestCount, 2);
+  assert.equal(body.items.length, 0);
+});
+
+test('Bing retries without strict filters but keeps line-art results mode-specific', async () => {
+  let requestCount = 0;
+  const coloringPage = {
+    t: 'SpongeBob coloring page',
+    murl: 'https://images.example.test/coloring-page.png',
+    turl: 'https://th.bing.com/th?id=test'
+  };
+  const encoded = JSON.stringify(coloringPage).replaceAll('"', '&quot;');
+  globalThis.fetch = async (input) => {
+    const url = new URL(String(input));
+    requestCount += 1;
+    if (requestCount === 1) {
+      assert.match(url.searchParams.get('qft'), /photo-linedrawing/);
+      return new Response('<html></html>', { status: 200 });
+    }
+
+    assert.equal(url.searchParams.has('qft'), false);
+    return new Response(`<a m="${encoded}"></a>`, { status: 200 });
+  };
+
+  const response = await worker.fetch(new Request(
+    'https://worker.example.test/api/search-images?q=spongebob&mode=lineart',
+    { headers: { Origin: origin } }
+  ), env);
+  const body = await response.json();
+
+  assert.equal(response.status, 200);
+  assert.equal(requestCount, 2);
+  assert.equal(body.items.length, 1);
+  assert.equal(body.items[0].originalUrl, coloringPage.murl);
+});
+
+test('Bing broad fallback rejects colored line-art results in color mode', async () => {
+  const coloringPage = {
+    t: 'SpongeBob coloring page',
+    murl: 'https://images.example.test/coloring-page.png'
+  };
+  const encoded = JSON.stringify(coloringPage).replaceAll('"', '&quot;');
+  globalThis.fetch = async (input) => {
+    const url = new URL(String(input));
+    return new Response(
+      url.searchParams.has('qft') ? '<html></html>' : `<a m="${encoded}"></a>`,
+      { status: 200 }
+    );
+  };
+
+  const response = await worker.fetch(new Request(
+    'https://worker.example.test/api/search-images?q=spongebob&mode=color',
+    { headers: { Origin: origin } }
+  ), env);
+  const body = await response.json();
+
+  assert.equal(response.status, 200);
   assert.equal(body.items.length, 0);
 });
 
