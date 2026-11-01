@@ -108,11 +108,14 @@ async function searchImages(request, env) {
   const query = normalizeSearchQuery(rawQuery, mode);
   const imageTypeFilter = mode === 'color' ? 'filterui:color2-color' : 'filterui:photo-linedrawing';
   const searchBing = async (filter) => {
-    const bingUrl = new URL('https://www.bing.com/images/search');
+    const bingUrl = new URL('https://www.bing.com/images/async');
     bingUrl.searchParams.set('q', query);
     if (filter) bingUrl.searchParams.set('qft', filter);
     bingUrl.searchParams.set('form', 'IRFLTR');
     bingUrl.searchParams.set('first', String(offset + 1));
+    bingUrl.searchParams.set('count', '35');
+    bingUrl.searchParams.set('scenario', 'ImageBasicHover');
+    bingUrl.searchParams.set('datsrc', 'I');
 
     const response = await fetch(bingUrl, {
       headers: {

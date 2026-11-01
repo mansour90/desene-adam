@@ -25,8 +25,10 @@ test('Bing search maps results and returns a signed Worker image proxy URL', asy
   const encoded = JSON.stringify(bingItem).replaceAll('"', '&quot;');
   globalThis.fetch = async (input) => {
     const url = new URL(String(input));
-    assert.match(url.href, /^https:\/\/www\.bing\.com\/images\/search\?/);
+    assert.match(url.href, /^https:\/\/www\.bing\.com\/images\/async\?/);
     assert.match(url.searchParams.get('qft'), /color2-color/);
+    assert.equal(url.searchParams.get('scenario'), 'ImageBasicHover');
+    assert.equal(url.searchParams.get('datsrc'), 'I');
     return new Response(`<a m="${encoded}"></a>`, {
       status: 200,
       headers: { 'Content-Type': 'text/html' }
@@ -74,6 +76,7 @@ test('Bing line-art search never returns generic images when its strict filter h
   globalThis.fetch = async (input) => {
     const url = new URL(String(input));
     requestCount += 1;
+    assert.equal(url.pathname, '/images/async');
     assert.match(url.searchParams.get('qft'), /photo-linedrawing/);
     return new Response('<html></html>', { status: 200 });
   };

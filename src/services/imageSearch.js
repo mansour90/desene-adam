@@ -53,8 +53,6 @@ export function getRelatedSuggestions(query) {
 }
 
 function getWikimediaSearchTerms(query, mode) {
-  if (mode === 'color') return [];
-
   const topic = query
     .normalize('NFD')
     .replace(/[\u0300-\u036f]/g, '')
@@ -224,17 +222,11 @@ export async function searchColoringImages(query, offset = 0, mode = 'lineart') 
     };
   }
 
-  if (mode === 'lineart') {
-    const fallback = await searchWikimediaImages(cleanQuery, offset, mode);
-    if (fallback.items.length > 0) {
-      return { ...fallback, suggestions };
-    }
-
-    if (workerError) throw workerError;
+  const fallback = await searchWikimediaImages(cleanQuery, offset, mode);
+  if (fallback.items.length > 0) {
     return { ...fallback, suggestions };
   }
 
   if (workerError) throw workerError;
-
-  return { items: [], suggestions, total: 0 };
+  return { ...fallback, suggestions };
 }
