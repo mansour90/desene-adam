@@ -179,6 +179,8 @@ export default function App() {
         <SearchBar
           onSearch={handleSearchSubmit}
           currentQuery={query}
+          imageMode={imageMode}
+          onImageModeChange={handleImageModeChange}
         />
 
         {/* Galerie stil Google Images (Presetat: Dimensiune Mari + Doar de colorat) */}
@@ -189,7 +191,6 @@ export default function App() {
           error={error}
           query={query}
           imageMode={imageMode}
-          onImageModeChange={handleImageModeChange}
           favorites={favorites}
           queue={sendQueue}
           onToggleFavorite={handleToggleFavorite}

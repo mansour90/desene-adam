@@ -1,7 +1,18 @@
 import React, { useState, useEffect } from 'react';
-import { Search, X } from 'lucide-react';
+import { Contrast, Palette, Search, X } from 'lucide-react';
 
-export default function SearchBar({ onSearch, currentQuery }) {
+const QUICK_SEARCHES = [
+  { label: 'Dinozauri', emoji: '🦖' },
+  { label: 'Mașini', emoji: '🚗' },
+  { label: 'Animale', emoji: '🦁' },
+  { label: 'Prințese', emoji: '👑' },
+  { label: 'Roboți', emoji: '🤖' },
+  { label: 'Avioane', emoji: '✈️' },
+  { label: 'Supereroi', emoji: '🦸' },
+  { label: 'Spațiu', emoji: '🚀' }
+];
+
+export default function SearchBar({ onSearch, currentQuery, imageMode, onImageModeChange }) {
   const [inputValue, setInputValue] = useState(currentQuery || '');
 
   // Când query-ul se schimbă extern, actualizăm câmpul
@@ -56,8 +67,50 @@ export default function SearchBar({ onSearch, currentQuery }) {
             <span className="search-btn-label">Caută</span>
           </button>
         </div>
-
       </form>
+
+      <div className="search-options-row">
+        <div className="gallery-mode-toggle" role="group" aria-label="Tipul desenelor">
+          <button
+            type="button"
+            className={`gallery-layout-button ${imageMode === 'lineart' ? 'active' : ''}`}
+            onClick={() => onImageModeChange('lineart')}
+            aria-label="Rezultate alb-negru"
+            title="Alb-negru"
+            aria-pressed={imageMode === 'lineart'}
+          >
+            <Contrast size={18} />
+            <span>Alb-negru</span>
+          </button>
+          <button
+            type="button"
+            className={`gallery-layout-button ${imageMode === 'color' ? 'active' : ''}`}
+            onClick={() => onImageModeChange('color')}
+            aria-label="Rezultate colorate"
+            title="Color"
+            aria-pressed={imageMode === 'color'}
+          >
+            <Palette size={18} />
+            <span>Color</span>
+          </button>
+        </div>
+      </div>
+
+      <div className="google-suggestions-bar" aria-label="Categorii rapide">
+        <div className="google-suggestions-scroll">
+          {QUICK_SEARCHES.map(({ label, emoji }) => (
+            <button
+              key={label}
+              type="button"
+              className="google-sug-chip"
+              onClick={() => onSearch(label)}
+            >
+              <span aria-hidden="true">{emoji}</span>
+              <span>{label}</span>
+            </button>
+          ))}
+        </div>
+      </div>
     </div>
   );
 }

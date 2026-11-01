@@ -47,6 +47,28 @@ test('Bing search maps results and returns a signed Worker image proxy URL', asy
   assert.ok(new URL(body.items[0].proxyUrl).searchParams.has('sig'));
 });
 
+test('Bing search parses image metadata when the HTML attribute spans multiple lines', async () => {
+  const bingItem = {
+    t: 'Coloring page',
+    murl: 'https://images.example.test/drawing.png',
+    turl: 'https://th.bing.com/th?id=test'
+  };
+  const encoded = JSON.stringify(bingItem)
+    .replaceAll('"', '&quot;')
+    .replace('&quot;murl&quot;', '\n&quot;murl&quot;');
+  globalThis.fetch = async () => new Response(`<a m="${encoded}"></a>`, { status: 200 });
+
+  const response = await worker.fetch(new Request(
+    'https://worker.example.test/api/search-images?q=spongebob&mode=color',
+    { headers: { Origin: origin } }
+  ), env);
+  const body = await response.json();
+
+  assert.equal(response.status, 200);
+  assert.equal(body.items.length, 1);
+  assert.equal(body.items[0].originalUrl, bingItem.murl);
+});
+
 test('Bing line-art search never returns generic images when its strict filter has no matches', async () => {
   let requestCount = 0;
   globalThis.fetch = async (input) => {

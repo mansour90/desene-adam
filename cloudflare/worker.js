@@ -129,7 +129,9 @@ async function searchImages(request, env) {
     const html = await response.text();
     return {
       error: null,
-      matches: [...html.matchAll(/m="?({.*?&quot;murl&quot;.*?})"?/g)]
+      matches: [...html.matchAll(/\bm\s*=\s*(["'])([\s\S]*?)\1/g)]
+        .filter(([, , encodedImage]) => /(?:&quot;|&#34;|&#x22;)murl(?:&quot;|&#34;|&#x22;)/i.test(encodedImage))
+        .map(([, , encodedImage]) => [null, encodedImage])
     };
   };
 

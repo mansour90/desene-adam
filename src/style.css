@@ -123,6 +123,17 @@ input, button, textarea {
   min-width: 0;
 }
 
+.search-options-row {
+  display: flex;
+  justify-content: flex-end;
+  margin-top: 8px;
+}
+
+.search-options-row .gallery-layout-button {
+  min-height: 38px;
+  padding: 6px 12px;
+}
+
 .search-form {
   display: flex;
   align-items: center;
