@@ -110,8 +110,8 @@ GitHub Pages servește fișiere statice și nu poate rula middleware-ul Vite. C�
 1. Instalează Node.js și rulează `npx wrangler login` din folderul proiectului.
 2. Creează un secret pentru semnarea URL-urilor proxy: `npx wrangler secret put IMAGE_PROXY_SECRET --config cloudflare/wrangler.toml`. Introdu o valoare aleatoare lungă când Wrangler o cere; nu o salva în Git și nu o trimite în chat.
 3. Publică Worker-ul: `npx wrangler deploy --config cloudflare/wrangler.toml`.
-4. Copiază URL-ul Worker afișat la deploy, de forma `https://desene-adam-bing-search.<subdomain>.workers.dev`.
-5. În GitHub, deschide **Settings → Secrets and variables → Actions → New repository secret** și adaugă `VITE_IMAGE_SEARCH_API_URL` cu acel URL.
-6. La următorul push pe `main`, workflow-ul reconstruiește aplicația folosind Worker-ul.
+4. Copiază URL-ul Worker afișat la deploy.
+5. Workflow-ul GitHub Pages folosește URL-ul Worker configurat în `.github/workflows/deploy.yml`; nu este necesar un secret separat pentru acest URL public.
+6. La următorul push pe `main`, workflow-ul reconstruiește și publică aplicația.
 
 Originea publică `https://mansour90.github.io` și originile locale de dezvoltare sunt deja permise în `cloudflare/wrangler.toml`. Dacă domeniul site-ului se schimbă, actualizează `ALLOWED_ORIGINS` și redeployează Worker-ul. Configurația completă se află în [cloudflare/README.md](cloudflare/README.md).

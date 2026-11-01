@@ -107,84 +107,108 @@ async function searchImages(request, env) {
 
   const query = normalizeSearchQuery(rawQuery, mode);
   const imageTypeFilter = mode === 'color' ? 'filterui:color2-color' : 'filterui:photo-linedrawing';
-  const bingUrl = new URL('https://www.bing.com/images/search');
-  bingUrl.searchParams.set('q', query);
-  bingUrl.searchParams.set('qft', `+filterui:imagesize-large+${imageTypeFilter}`);
-  bingUrl.searchParams.set('form', 'IRFLTR');
-  bingUrl.searchParams.set('first', String(offset + 1));
+  const searchBing = async (filter) => {
+    const bingUrl = new URL('https://www.bing.com/images/search');
+    bingUrl.searchParams.set('q', query);
+    if (filter) bingUrl.searchParams.set('qft', filter);
+    bingUrl.searchParams.set('form', 'IRFLTR');
+    bingUrl.searchParams.set('first', String(offset + 1));
 
-  const bingResponse = await fetch(bingUrl, {
-    headers: {
-      'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/122.0.0.0 Safari/537.36',
-      'Accept': 'text/html,application/xhtml+xml,application/xml;q=0.9,*/*;q=0.8',
-      'Accept-Language': 'ro-RO,ro;q=0.9,en-US;q=0.8,en;q=0.7'
-    }
-  });
-
-  if (!bingResponse.ok) {
-    return jsonResponse(request, env, { error: `Bing a răspuns cu HTTP ${bingResponse.status}.`, items: [] }, 502);
-  }
-
-  const html = await bingResponse.text();
-  const matches = [...html.matchAll(/m="?({.*?&quot;murl&quot;.*?})"?/g)];
-  const seenUrls = new Set();
-  const items = [];
-
-  for (const [index, match] of matches.entries()) {
-    const parsed = decodeBingImageResult(match[1]);
-    if (!parsed?.murl || seenUrls.has(parsed.murl)) continue;
-
-    let originalUrl;
-    try {
-      originalUrl = new URL(parsed.murl);
-      if (!['http:', 'https:'].includes(originalUrl.protocol)) continue;
-    } catch {
-      continue;
-    }
-    seenUrls.add(originalUrl.href);
-
-    const previewUrl = parsed.turl || originalUrl.href;
-    const sourceUrl = parsed.purl || originalUrl.href;
-    let sourceDomain = 'Bing Images';
-    try {
-      sourceDomain = new URL(sourceUrl).hostname.replace(/^www\./, '');
-    } catch {
-      // Păstrăm domeniul implicit dacă Bing returnează un URL sursă invalid.
-    }
-
-    let title = String(parsed.t || parsed.desc || rawQuery)
-      .replace(/coloring\s*(pages?|books?)?/gi, '')
-      .replace(/printable|free|download/gi, '')
-      .replace(/desene\s*(de\s*colorat)?|planse\s*(de\s*colorat)?/gi, '')
-      .replace(/[-_|]/g, ' ')
-      .replace(/\s+/g, ' ')
-      .trim();
-    if (title.length < 3) title = `${rawQuery} de colorat`;
-
-    const expiresAt = Math.floor(Date.now() / 1000) + 86400;
-    const signature = await signImageUrl(originalUrl.href, expiresAt, env.IMAGE_PROXY_SECRET);
-    const proxyUrl = new URL('/api/proxy-image', requestUrl.origin);
-    proxyUrl.searchParams.set('url', originalUrl.href);
-    proxyUrl.searchParams.set('exp', String(expiresAt));
-    proxyUrl.searchParams.set('sig', signature);
-
-    items.push({
-      id: `bing_${crypto.randomUUID?.() || `${Date.now()}_${index}`}`,
-      title,
-      rawTitle: parsed.t || rawQuery,
-      searchTerm: rawQuery,
-      previewUrl,
-      originalUrl: originalUrl.href,
-      proxyUrl: proxyUrl.href,
-      width: Number(parsed.w) || 1200,
-      height: Number(parsed.h) || 1600,
-      mime: 'image/jpeg',
-      license: 'Rezultat Bing Images; verifică drepturile la sursă înainte de utilizare.',
-      artist: sourceDomain,
-      sourceUrl
+    const response = await fetch(bingUrl, {
+      headers: {
+        'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/122.0.0.0 Safari/537.36',
+        'Accept': 'text/html,application/xhtml+xml,application/xml;q=0.9,*/*;q=0.8',
+        'Accept-Language': 'ro-RO,ro;q=0.9,en-US;q=0.8,en;q=0.7'
+      }
     });
 
-    if (items.length >= 40) break;
+    if (!response.ok) {
+      return { error: response.status, matches: [] };
+    }
+
+    const html = await response.text();
+    return {
+      error: null,
+      matches: [...html.matchAll(/m="?({.*?&quot;murl&quot;.*?})"?/g)]
+    };
+  };
+
+  const mapMatchesToItems = async (matches) => {
+    const seenUrls = new Set();
+    const items = [];
+
+    for (const [index, match] of matches.entries()) {
+      const parsed = decodeBingImageResult(match[1]);
+      if (!parsed?.murl || seenUrls.has(parsed.murl)) continue;
+
+      let originalUrl;
+      try {
+        originalUrl = new URL(parsed.murl);
+        if (!['http:', 'https:'].includes(originalUrl.protocol)) continue;
+      } catch {
+        continue;
+      }
+      seenUrls.add(originalUrl.href);
+
+      const previewUrl = parsed.turl || originalUrl.href;
+      const sourceUrl = parsed.purl || originalUrl.href;
+      let sourceDomain = 'Bing Images';
+      try {
+        sourceDomain = new URL(sourceUrl).hostname.replace(/^www\./, '');
+      } catch {
+        // Păstrăm domeniul implicit dacă Bing returnează un URL sursă invalid.
+      }
+
+      let title = String(parsed.t || parsed.desc || rawQuery)
+        .replace(/coloring\s*(pages?|books?)?/gi, '')
+        .replace(/printable|free|download/gi, '')
+        .replace(/desene\s*(de\s*colorat)?|planse\s*(de\s*colorat)?/gi, '')
+        .replace(/[-_|]/g, ' ')
+        .replace(/\s+/g, ' ')
+        .trim();
+      if (title.length < 3) title = `${rawQuery} de colorat`;
+
+      const expiresAt = Math.floor(Date.now() / 1000) + 86400;
+      const signature = await signImageUrl(originalUrl.href, expiresAt, env.IMAGE_PROXY_SECRET);
+      const proxyUrl = new URL('/api/proxy-image', requestUrl.origin);
+      proxyUrl.searchParams.set('url', originalUrl.href);
+      proxyUrl.searchParams.set('exp', String(expiresAt));
+      proxyUrl.searchParams.set('sig', signature);
+
+      items.push({
+        id: `bing_${crypto.randomUUID?.() || `${Date.now()}_${index}`}`,
+        title,
+        rawTitle: parsed.t || rawQuery,
+        searchTerm: rawQuery,
+        previewUrl,
+        originalUrl: originalUrl.href,
+        proxyUrl: proxyUrl.href,
+        width: Number(parsed.w) || 1200,
+        height: Number(parsed.h) || 1600,
+        mime: 'image/jpeg',
+        license: 'Rezultat Bing Images; verifică drepturile la sursă înainte de utilizare.',
+        artist: sourceDomain,
+        sourceUrl
+      });
+
+      if (items.length >= 40) break;
+    }
+
+    return items;
+  };
+
+  let { error: bingError, matches } = await searchBing(`+filterui:imagesize-large+${imageTypeFilter}`);
+  if (bingError) {
+    return jsonResponse(request, env, { error: `Bing a răspuns cu HTTP ${bingError}.`, items: [] }, 502);
+  }
+
+  let items = await mapMatchesToItems(matches);
+  if (items.length === 0) {
+    ({ error: bingError, matches } = await searchBing('+filterui:imagesize-large'));
+    if (bingError) {
+      return jsonResponse(request, env, { error: `Bing a răspuns cu HTTP ${bingError}.`, items: [] }, 502);
+    }
+    items = await mapMatchesToItems(matches);
   }
 
   return jsonResponse(request, env, { items, total: items.length });

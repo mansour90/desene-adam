@@ -45,6 +45,39 @@ test('Bing search maps results and returns a signed Worker image proxy URL', asy
   assert.ok(new URL(body.items[0].proxyUrl).searchParams.has('sig'));
 });
 
+test('Bing search retries without the strict image type filter when it finds no results', async () => {
+  const bingItem = {
+    t: 'SpongeBob coloring page',
+    murl: 'https://images.example.test/drawing.png',
+    turl: 'https://th.bing.com/th?id=test',
+    purl: 'https://source.example.test/page'
+  };
+  let requestCount = 0;
+  globalThis.fetch = async (input) => {
+    const url = new URL(String(input));
+    requestCount += 1;
+    if (requestCount === 1) {
+      assert.match(url.searchParams.get('qft'), /photo-linedrawing/);
+      return new Response('<html></html>', { status: 200 });
+    }
+    assert.equal(url.searchParams.get('qft'), '+filterui:imagesize-large');
+    return new Response(`<a m="${JSON.stringify(bingItem).replaceAll('"', '&quot;')}"></a>`, {
+      status: 200,
+      headers: { 'Content-Type': 'text/html' }
+    });
+  };
+
+  const response = await worker.fetch(new Request(
+    'https://worker.example.test/api/search-images?q=spongebob&mode=lineart',
+    { headers: { Origin: origin } }
+  ), env);
+  const body = await response.json();
+
+  assert.equal(response.status, 200);
+  assert.equal(requestCount, 2);
+  assert.equal(body.items.length, 1);
+});
+
 test('signed image proxy serves images and rejects unsigned URLs', async () => {
   const imageUrl = 'https://images.example.test/drawing.png';
   const now = Math.floor(Date.now() / 1000);

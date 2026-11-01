@@ -39,9 +39,9 @@ jobs:
       - name: Build producție
         run: npm run build
         env:
-          # Configurează aceste valori în Settings → Secrets and variables → Actions.
+          # URL-ul Worker-ului este public și nu trebuie stocat ca secret.
           VITE_GOOGLE_CLIENT_ID: ${{ secrets.VITE_GOOGLE_CLIENT_ID }}
-          VITE_IMAGE_SEARCH_API_URL: ${{ secrets.VITE_IMAGE_SEARCH_API_URL }}
+          VITE_IMAGE_SEARCH_API_URL: https://desene-adam-bing-search.desene-adam-mansour90.workers.dev
 
       - name: Configurare GitHub Pages
         uses: actions/configure-pages@v4

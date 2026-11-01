@@ -22,12 +22,9 @@ https://desene-adam-bing-search.<subdomain>.workers.dev
 
 ## Conectează GitHub Pages
 
-În repository-ul `mansour90/desene-adam`, deschide **Settings → Secrets and variables → Actions → New repository secret** și adaugă:
+URL-ul Worker-ului este configurat în `.github/workflows/deploy.yml` ca valoare publică de build; nu trebuie stocat ca secret GitHub. Dacă se schimbă URL-ul afișat de Wrangler, actualizează valoarea `VITE_IMAGE_SEARCH_API_URL` din workflow și publică din nou aplicația.
 
-- Name: `VITE_IMAGE_SEARCH_API_URL`
-- Value: URL-ul `workers.dev` afișat de Wrangler, fără slash la final
-
-După salvare, retrigger-ează workflow-ul `Deploy Desene Adam → GitHub Pages` din Actions sau fă push la o schimbare. Valoarea este injectată numai în buildul frontendului; secretul HMAC rămâne exclusiv în Cloudflare.
+Secretul HMAC rămâne exclusiv în Cloudflare.
 
 ## Origini permise
 
