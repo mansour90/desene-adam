@@ -47,12 +47,12 @@ function normalizeSearchQuery(rawQuery, mode) {
     return `${query} colored illustration`;
   }
 
-  if (!/coloring|colouring|de colorat|planse|line art/i.test(query)) {
-    query += ' coloring pages';
-  } else if (/de colorat/i.test(query)) {
-    query = `${query.replace(/de colorat/i, '').trim()} coloring pages`;
-  }
-  return query;
+  const topic = query
+    .replace(/\b(?:coloring|colouring)\s*(?:pages?|sheets?|books?)?\b/gi, ' ')
+    .replace(/\bde\s+colorat\b|\bplan(?:ș|s)e\b/gi, ' ')
+    .replace(/\s+/g, ' ')
+    .trim();
+  return topic ? `coloring pages ${topic}` : 'coloring pages';
 }
 
 function decodeBingImageResult(match) {
@@ -106,8 +106,9 @@ async function searchImages(request, env) {
   }
 
   const query = normalizeSearchQuery(rawQuery, mode);
-  const imageTypeFilter = mode === 'color' ? 'filterui:color2-color' : 'filterui:photo-linedrawing';
-  const lineArtPattern = /\b(coloring pages?|colouring pages?|coloring books?|colouring books?|line art|line drawing|outline|black and white|black-and-white|b&w|bw\d*)\b/i;
+  const imageFilters = mode === 'color'
+    ? '+filterui:imagesize-large+filterui:color2-color'
+    : '+filterui:imagesize-large+filterui:color2-bw';
   const searchBing = async (filter) => {
     const bingUrl = new URL('https://www.bing.com/images/async');
     bingUrl.searchParams.set('q', query);
@@ -139,16 +140,13 @@ async function searchImages(request, env) {
     };
   };
 
-  const mapMatchesToItems = async (matches, requireModeMatch = false) => {
+  const mapMatchesToItems = async (matches) => {
     const seenUrls = new Set();
     const items = [];
 
     for (const [index, match] of matches.entries()) {
       const parsed = decodeBingImageResult(match[1]);
       if (!parsed?.murl || seenUrls.has(parsed.murl)) continue;
-      const description = [parsed.t, parsed.desc, parsed.purl].filter(Boolean).join(' ');
-      if (requireModeMatch && mode === 'lineart' && !lineArtPattern.test(description)) continue;
-      if (requireModeMatch && mode === 'color' && lineArtPattern.test(description)) continue;
 
       let originalUrl;
       try {
@@ -206,21 +204,12 @@ async function searchImages(request, env) {
     return items;
   };
 
-  const strictSearch = await searchBing(`+filterui:imagesize-large+${imageTypeFilter}`);
-  let bingError = strictSearch.error;
-  let items = [];
-  if (bingError) {
-    return jsonResponse(request, env, { error: `Bing a răspuns cu HTTP ${bingError}.`, items: [] }, 502);
+  const bingSearch = await searchBing(imageFilters);
+  if (bingSearch.error) {
+    return jsonResponse(request, env, { error: `Bing a răspuns cu HTTP ${bingSearch.error}.`, items: [] }, 502);
   }
 
-  items = await mapMatchesToItems(strictSearch.matches);
-  if (!items.length) {
-    const broadSearch = await searchBing('');
-    if (!broadSearch.error) {
-      items = await mapMatchesToItems(broadSearch.matches, true);
-    }
-  }
-
+  const items = await mapMatchesToItems(bingSearch.matches);
   return jsonResponse(request, env, { items, total: items.length });
 }
 

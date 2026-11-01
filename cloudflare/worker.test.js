@@ -26,7 +26,7 @@ test('Bing search maps results and returns a signed Worker image proxy URL', asy
   globalThis.fetch = async (input) => {
     const url = new URL(String(input));
     assert.match(url.href, /^https:\/\/www\.bing\.com\/images\/async\?/);
-    assert.match(url.searchParams.get('qft'), /color2-color/);
+    assert.equal(url.searchParams.get('qft'), '+filterui:imagesize-large+filterui:color2-color');
     assert.equal(url.searchParams.get('scenario'), 'ImageBasicHover');
     assert.equal(url.searchParams.get('datsrc'), 'I');
     return new Response(`<a m="${encoded}"></a>`, {
@@ -71,79 +71,45 @@ test('Bing search parses image metadata when the HTML attribute spans multiple l
   assert.equal(body.items[0].originalUrl, bingItem.murl);
 });
 
-test('Bing line-art search never returns generic images when its strict filter has no matches', async () => {
-  let requestCount = 0;
-  globalThis.fetch = async (input) => {
-    const url = new URL(String(input));
-    requestCount += 1;
-    assert.equal(url.pathname, '/images/async');
-    if (requestCount === 1) {
-      assert.match(url.searchParams.get('qft'), /photo-linedrawing/);
-    } else {
-      assert.equal(url.searchParams.has('qft'), false);
-    }
-    return new Response('<html></html>', { status: 200 });
-  };
-
-  const response = await worker.fetch(new Request(
-    'https://worker.example.test/api/search-images?q=spongebob&mode=lineart',
-    { headers: { Origin: origin } }
-  ), env);
-  const body = await response.json();
-
-  assert.equal(response.status, 200);
-  assert.equal(requestCount, 2);
-  assert.equal(body.items.length, 0);
-});
-
-test('Bing retries without strict filters but keeps line-art results mode-specific', async () => {
+test('Bing line-art search uses large black-and-white coloring-page filters', async () => {
   let requestCount = 0;
   const coloringPage = {
-    t: 'SpongeBob coloring page',
-    murl: 'https://images.example.test/coloring-page.png',
+    t: 'Miles Morales coloring pages',
+    murl: 'https://images.example.test/miles-morales.png',
     turl: 'https://th.bing.com/th?id=test'
   };
   const encoded = JSON.stringify(coloringPage).replaceAll('"', '&quot;');
   globalThis.fetch = async (input) => {
     const url = new URL(String(input));
     requestCount += 1;
-    if (requestCount === 1) {
-      assert.match(url.searchParams.get('qft'), /photo-linedrawing/);
-      return new Response('<html></html>', { status: 200 });
-    }
-
-    assert.equal(url.searchParams.has('qft'), false);
+    assert.equal(url.pathname, '/images/async');
+    assert.equal(url.searchParams.get('q'), 'coloring pages Spider-Man');
+    assert.equal(url.searchParams.get('qft'), '+filterui:imagesize-large+filterui:color2-bw');
+    assert.doesNotMatch(url.searchParams.get('qft'), /photo-linedrawing/);
     return new Response(`<a m="${encoded}"></a>`, { status: 200 });
   };
 
   const response = await worker.fetch(new Request(
-    'https://worker.example.test/api/search-images?q=spongebob&mode=lineart',
+    'https://worker.example.test/api/search-images?q=Spider-Man&mode=lineart',
     { headers: { Origin: origin } }
   ), env);
   const body = await response.json();
 
   assert.equal(response.status, 200);
-  assert.equal(requestCount, 2);
+  assert.equal(requestCount, 1);
   assert.equal(body.items.length, 1);
   assert.equal(body.items[0].originalUrl, coloringPage.murl);
 });
 
-test('Bing broad fallback rejects colored line-art results in color mode', async () => {
-  const coloringPage = {
-    t: 'SpongeBob coloring page',
-    murl: 'https://images.example.test/coloring-page.png'
-  };
-  const encoded = JSON.stringify(coloringPage).replaceAll('"', '&quot;');
+test('Bing line-art search does not duplicate coloring-page terms', async () => {
   globalThis.fetch = async (input) => {
     const url = new URL(String(input));
-    return new Response(
-      url.searchParams.has('qft') ? '<html></html>' : `<a m="${encoded}"></a>`,
-      { status: 200 }
-    );
+    assert.equal(url.searchParams.get('q'), 'coloring pages Spider-Man');
+    return new Response('<html></html>', { status: 200 });
   };
 
   const response = await worker.fetch(new Request(
-    'https://worker.example.test/api/search-images?q=spongebob&mode=color',
+    'https://worker.example.test/api/search-images?q=Spider-Man%20coloring%20pages&mode=lineart',
     { headers: { Origin: origin } }
   ), env);
   const body = await response.json();
