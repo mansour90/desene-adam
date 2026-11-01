@@ -82,13 +82,14 @@ function getWikimediaSearchTerms(query, mode) {
     })[word] || word)
     .join(' ');
 
-  return topic ? [`${topic} coloring page`] : [];
+  if (!topic) return [];
+  return mode === 'color' ? [topic] : [`${topic} coloring page`];
 }
 
-function isColoringPageResult(page) {
+function getWikimediaPageText(page) {
   const info = page.imageinfo?.[0];
   const metadata = info?.extmetadata || {};
-  const text = [
+  return [
     page.title,
     metadata.ImageDescription?.value,
     metadata.ObjectName?.value
@@ -98,8 +99,14 @@ function isColoringPageResult(page) {
     .replace(/<[^>]*>/g, ' ')
     .replace(/&(?:nbsp|amp|quot|#39);/g, ' ')
     .toLowerCase();
+}
 
-  return /\b(coloring page|coloring pages|coloring book|colouring page|colouring book|line art|line drawing|outline|black and white|black-and-white|b&w|bw\d*)\b/.test(text);
+function isColoringPageResult(page) {
+  return /\b(coloring page|coloring pages|coloring book|colouring page|colouring book|line art|line drawing|outline|black and white|black-and-white|b&w|bw\d*)\b/.test(getWikimediaPageText(page));
+}
+
+function isBlackAndWhiteResult(page) {
+  return /\b(coloring page|coloring pages|coloring book|colouring page|colouring book|line art|line drawing|outline|black and white|black-and-white|b&w|bw\d*)\b/.test(getWikimediaPageText(page));
 }
 
 async function searchWikimediaImages(query, offset, mode) {
@@ -130,10 +137,13 @@ async function searchWikimediaImages(query, offset, mode) {
         const info = page.imageinfo?.[0];
         const width = Number(info?.width) || 0;
         const height = Number(info?.height) || 0;
+        const modeMatches = mode === 'lineart'
+          ? isColoringPageResult(page)
+          : !isBlackAndWhiteResult(page);
         return info?.url
           && info.mime?.startsWith('image/')
           && (width >= 600 || height >= 600)
-          && isColoringPageResult(page);
+          && modeMatches;
       })
       .map((page) => {
         const info = page.imageinfo[0];
