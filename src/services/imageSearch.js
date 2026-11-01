@@ -52,6 +52,99 @@ export function getRelatedSuggestions(query) {
   ];
 }
 
+function getWikimediaSearchTerms(query, mode) {
+  const topic = query
+    .normalize('NFD')
+    .replace(/[\u0300-\u036f]/g, '')
+    .toLowerCase()
+    .replace(/\b(coloring|colouring)\s*(pages?|sheets?)?\b/g, '')
+    .replace(/\b(de|desene|planse|colorat|characters?|pages?|pictures?|images?)\b/g, '')
+    .replace(/\s+/g, ' ')
+    .trim()
+    .split(' ')
+    .filter(Boolean)
+    .map((word) => ({
+      dinozaur: 'dinosaur',
+      dinozauri: 'dinosaur',
+      masina: 'car',
+      masini: 'cars',
+      animal: 'animal',
+      animale: 'animals',
+      printesa: 'princess',
+      printese: 'princess',
+      robot: 'robot',
+      roboti: 'robots',
+      avion: 'airplane',
+      avioane: 'airplanes',
+      spatiu: 'space'
+    })[word] || word)
+    .join(' ');
+
+  if (!topic) return [];
+  return mode === 'lineart' ? [`${topic} coloring`, topic] : [topic];
+}
+
+async function searchWikimediaImages(query, offset, mode) {
+  const searchTerms = getWikimediaSearchTerms(query, mode);
+
+  for (const searchTerm of searchTerms) {
+    const endpoint = new URL('https://commons.wikimedia.org/w/api.php');
+    endpoint.searchParams.set('action', 'query');
+    endpoint.searchParams.set('generator', 'search');
+    endpoint.searchParams.set('gsrsearch', searchTerm);
+    endpoint.searchParams.set('gsrnamespace', '6');
+    endpoint.searchParams.set('gsrlimit', '40');
+    endpoint.searchParams.set('gsroffset', String(offset));
+    endpoint.searchParams.set('prop', 'imageinfo');
+    endpoint.searchParams.set('iiprop', 'url|size|mime|extmetadata');
+    endpoint.searchParams.set('iiurlwidth', '800');
+    endpoint.searchParams.set('format', 'json');
+    endpoint.searchParams.set('origin', '*');
+
+    const response = await fetch(endpoint.toString());
+    if (!response.ok) {
+      throw new Error(`Căutarea Wikimedia Commons a eșuat (HTTP ${response.status}).`);
+    }
+
+    const data = await response.json();
+    const items = Object.values(data.query?.pages || {})
+      .filter((page) => {
+        const info = page.imageinfo?.[0];
+        const width = Number(info?.width) || 0;
+        const height = Number(info?.height) || 0;
+        return info?.url && info.mime?.startsWith('image/') && (width >= 600 || height >= 600);
+      })
+      .map((page) => {
+        const info = page.imageinfo[0];
+        const title = String(page.title || query)
+          .replace(/^File:/i, '')
+          .replace(/\.[a-z0-9]+$/i, '');
+
+        return {
+          id: `commons_${page.pageid}`,
+          title: title || `${query} de colorat`,
+          rawTitle: page.title || query,
+          searchTerm: query,
+          previewUrl: info.thumburl || info.url,
+          originalUrl: info.url,
+          proxyUrl: info.url,
+          width: Number(info.width) || 1200,
+          height: Number(info.height) || 1600,
+          mime: info.mime,
+          license: info.extmetadata?.LicenseShortName?.value || 'Wikimedia Commons; verifică licența la sursă.',
+          artist: 'Wikimedia Commons',
+          sourceUrl: info.descriptionurl || `https://commons.wikimedia.org/wiki/${encodeURIComponent(page.title)}`
+        };
+      });
+
+    if (items.length > 0) {
+      return { items, total: items.length };
+    }
+  }
+
+  return { items: [], total: 0 };
+}
+
 /**
  * Căutare reală web pentru planșe de colorat cu preset "Mari" și "Desen cu linii"
  * @param {string} query 
@@ -78,15 +171,33 @@ export async function searchColoringImages(query, offset = 0, mode = 'lineart') 
   endpoint.searchParams.set('offset', String(offset));
   endpoint.searchParams.set('mode', mode);
 
-  const response = await fetch(endpoint.toString());
-  const data = await response.json().catch(() => ({}));
-  if (!response.ok) {
-    throw new Error(data.error || `Căutarea Bing a eșuat (HTTP ${response.status}).`);
+  let response = null;
+  let data = {};
+  let workerError = null;
+  try {
+    response = await fetch(endpoint.toString());
+    data = await response.json().catch(() => ({}));
+    if (!response.ok) {
+      workerError = new Error(data.error || `Căutarea Bing a eșuat (HTTP ${response.status}).`);
+    }
+  } catch (error) {
+    workerError = error;
   }
 
-  return {
-    items: Array.isArray(data.items) ? data.items : [],
-    suggestions,
-    total: Number(data.total) || 0
-  };
+  const bingItems = Array.isArray(data?.items) ? data.items : [];
+  if (response?.ok && bingItems.length > 0) {
+    return {
+      items: bingItems,
+      suggestions: data?.suggestions?.length ? data.suggestions : suggestions,
+      total: Number(data.total) || bingItems.length
+    };
+  }
+
+  const fallback = await searchWikimediaImages(cleanQuery, offset, mode);
+  if (fallback.items.length > 0) {
+    return { ...fallback, suggestions };
+  }
+  if (workerError) throw workerError;
+
+  return { ...fallback, suggestions };
 }

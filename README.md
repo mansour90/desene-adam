@@ -14,6 +14,7 @@ Aplicație web progresivă (PWA) modernă, intuitivă și veselă, special conce
 2. **Căutare Bing Images:**
    - Bing Images este apelat printr-un Cloudflare Worker, astfel încât căutarea funcționează și pe GitHub Pages fără apeluri browser blocate de CORS.
    - Moduri separate pentru planșe alb-negru și imagini colorate, cu filtrul Bing de dimensiune mare.
+   - Dacă Bing nu găsește rezultate, aplicația încearcă Wikimedia Commons, inclusiv pentru termeni românești precum „dinozauri”.
    - Worker-ul proxy-uiește imaginile originale cu URL-uri semnate temporar pentru conversia și trimiterea în Drive.
 
 3. **Căutare Vocală în Limba Română (`ro-RO`):**
