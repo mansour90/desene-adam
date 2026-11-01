@@ -67,11 +67,6 @@ export default function App() {
     return () => window.removeEventListener('scroll', updateScrollTopVisibility);
   }, []);
 
-  // La pornire încărcăm automat desene mari exact ca în exemplul din captură
-  useEffect(() => {
-    search('spongebob characters', 'lineart');
-  }, [search]);
-
   // Căutare manuală, vocală sau prin sugestii conexe
   const handleSearchSubmit = (newQuery) => {
     search(newQuery, imageMode);
@@ -195,7 +190,6 @@ export default function App() {
           queue={sendQueue}
           onToggleFavorite={handleToggleFavorite}
           onToggleQueue={handleToggleQueue}
-          onSearchQuery={handleSearchSubmit}
           onSelectImage={handleSelectImage}
         />
           </>

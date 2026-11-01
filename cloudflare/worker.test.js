@@ -164,3 +164,32 @@ test('Worker allows configured CORS origin and rejects unlisted origins', async 
   }), env);
   assert.equal(rejected.status, 403);
 });
+
+test('Brave search (when BRAVE_API_KEY is set) maps results and uses strict safesearch', async () => {
+  globalThis.fetch = async (input, init) => {
+    const url = new URL(String(input));
+    assert.equal(url.origin + url.pathname, 'https://api.search.brave.com/res/v1/images/search');
+    assert.equal(url.searchParams.get('safesearch'), 'strict');
+    assert.equal(init.headers['X-Subscription-Token'], 'brave-test-key');
+    return new Response(JSON.stringify({
+      results: [{
+        title: 'Dino',
+        url: 'https://source.example.test/dino',
+        source: 'source.example.test',
+        thumbnail: { src: 'https://imgs.search.brave.com/t.jpg' },
+        properties: { url: 'https://images.example.test/dino.png', width: 1000, height: 1400 }
+      }, { title: 'fara imagine' }]
+    }), { status: 200, headers: { 'Content-Type': 'application/json' } });
+  };
+
+  const response = await worker.fetch(new Request(
+    'https://worker.example.test/api/search-images?q=dinozauri',
+    { headers: { Origin: origin } }
+  ), { ...env, BRAVE_API_KEY: 'brave-test-key' });
+  const body = await response.json();
+
+  assert.equal(response.status, 200);
+  assert.equal(body.items.length, 1);
+  assert.equal(body.items[0].previewUrl, 'https://imgs.search.brave.com/t.jpg');
+  assert.ok(new URL(body.items[0].proxyUrl).searchParams.has('sig'));
+});

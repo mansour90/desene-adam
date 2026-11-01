@@ -13,7 +13,6 @@ export default function ImageGallery({
   queue = [],
   onToggleFavorite,
   onToggleQueue,
-  onSearchQuery,
   onSelectImage
 }) {
   const [columnsPerRow, setColumnsPerRow] = useState(2);
@@ -45,25 +44,15 @@ export default function ImageGallery({
         </div>
       )}
 
-      {/* Stare 3: Niciun rezultat */}
+      {/* Stare 3: Niciun rezultat / ecran de start */}
       {!isLoading && !error && images.length === 0 && (
         <div className="google-gallery-state">
           <div className="google-empty-box">
-            <span className="empty-emoji">🔍</span>
-            <h3 className="empty-heading">Niciun desen găsit pentru „{query}”</h3>
-            <p className="empty-text">Încearcă să cauți personaje cunoscute sau animale:</p>
-            <div className="empty-suggestions">
-              {['SpongeBob', 'Dinozauri', 'Spider-Man', 'Sonic', 'Mașini de curse', 'Elsa Frozen', 'Pikachu'].map((term) => (
-                <button
-                  key={term}
-                  type="button"
-                  className="suggestion-pill"
-                  onClick={() => onSearchQuery(term)}
-                >
-                  {term}
-                </button>
-              ))}
-            </div>
+            <span className="empty-emoji">{query ? '🔍' : '👆'}</span>
+            <h3 className="empty-heading">
+              {query ? `Niciun desen găsit pentru „${query}”` : 'Apasă pe un desen'}
+            </h3>
+            {query && <p className="empty-text">Apasă pe alt desen de sus sau caută altceva.</p>}
           </div>
         </div>
       )}

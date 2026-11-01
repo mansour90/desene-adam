@@ -1,19 +1,54 @@
 import React, { useState, useEffect } from 'react';
 import { Contrast, Palette, Search, X } from 'lucide-react';
+import { useTopicIcons } from '../hooks/useTopicIcons';
 
+// Butoane doar cu poză (fără text). `q` = termenul căutat, `en` = căutarea pentru poza butonului,
+// `label` = doar pentru accesibilitate, `emoji` = rezerva dacă poza nu se încarcă.
 const QUICK_SEARCHES = [
-  { label: 'Dinozauri', emoji: '🦖' },
-  { label: 'Mașini', emoji: '🚗' },
-  { label: 'Animale', emoji: '🦁' },
-  { label: 'Prințese', emoji: '👑' },
-  { label: 'Roboți', emoji: '🤖' },
-  { label: 'Avioane', emoji: '✈️' },
-  { label: 'Supereroi', emoji: '🦸' },
-  { label: 'Spațiu', emoji: '🚀' }
+  { label: 'SpongeBob', q: 'SpongeBob', en: 'SpongeBob SquarePants cartoon', emoji: '🧽' },
+  { label: 'Spider-Man', q: 'Spider-Man', en: 'Spider-Man cartoon', emoji: '🕷️' },
+  { label: 'Sonic', q: 'Sonic the Hedgehog', en: 'Sonic the Hedgehog cartoon', emoji: '🦔' },
+  { label: 'Pikachu', q: 'Pikachu', en: 'Pikachu cartoon', emoji: '⚡' },
+  { label: 'Elsa Frozen', q: 'Elsa Frozen', en: 'Elsa Frozen cartoon', emoji: '❄️' },
+  { label: 'Dinozauri', q: 'Dinozauri', en: 'cute cartoon dinosaur', emoji: '🦖' },
+  { label: 'Mașini', q: 'Mașini', en: 'cartoon car', emoji: '🚗' },
+  { label: 'Mașini de curse', q: 'Mașini de curse', en: 'cartoon race car', emoji: '🏎️' },
+  { label: 'Animale', q: 'Animale', en: 'cute cartoon lion', emoji: '🦁' },
+  { label: 'Cățeluși', q: 'Cățeluși', en: 'cute cartoon puppy', emoji: '🐶' },
+  { label: 'Pisicuțe', q: 'Pisicuțe', en: 'cute cartoon kitten', emoji: '🐱' },
+  { label: 'Prințese', q: 'Prințese', en: 'cartoon princess', emoji: '👑' },
+  { label: 'Unicorn', q: 'Unicorn', en: 'cute cartoon unicorn', emoji: '🦄' },
+  { label: 'Roboți', q: 'Roboți', en: 'cute cartoon robot', emoji: '🤖' },
+  { label: 'Avioane', q: 'Avioane', en: 'cartoon airplane', emoji: '✈️' },
+  { label: 'Spațiu', q: 'Spațiu', en: 'cartoon rocket', emoji: '🚀' },
+  { label: 'Supereroi', q: 'Supereroi', en: 'cartoon superhero', emoji: '🦸' },
+  { label: 'Pompieri', q: 'Mașină de pompieri', en: 'cartoon fire truck', emoji: '🚒' },
+  { label: 'Tractor', q: 'Tractor', en: 'cartoon tractor', emoji: '🚜' },
+  { label: 'Fluturi', q: 'Fluturi', en: 'cartoon butterfly', emoji: '🦋' }
 ];
+
+// Poze proprii: pune fișierul în public/icons/ și trece-l aici, de ex. { 'Spider-Man': 'spiderman.png' }.
+// Are prioritate față de poza adusă automat din căutare.
+const CUSTOM_ICON_FILES = {};
+
+function TopicIcon({ emoji, src }) {
+  const [failedSrc, setFailedSrc] = useState(null);
+  if (!src || failedSrc === src) return <span aria-hidden="true">{emoji}</span>;
+  return (
+    <img
+      src={src}
+      alt=""
+      loading="lazy"
+      decoding="async"
+      referrerPolicy="no-referrer"
+      onError={() => setFailedSrc(src)}
+    />
+  );
+}
 
 export default function SearchBar({ onSearch, currentQuery, imageMode, onImageModeChange }) {
   const [inputValue, setInputValue] = useState(currentQuery || '');
+  const topicIcons = useTopicIcons(QUICK_SEARCHES);
 
   // Când query-ul se schimbă extern, actualizăm câmpul
   useEffect(() => {
@@ -42,7 +77,7 @@ export default function SearchBar({ onSearch, currentQuery, imageMode, onImageMo
             className="search-input"
             value={inputValue}
             onChange={(e) => setInputValue(e.target.value)}
-            placeholder="Ex: SpongeBob, dinozauri, mașini, Elsa..."
+            placeholder="Caută un desen..."
             aria-label="Câmp de căutare desene"
           />
 
@@ -96,20 +131,23 @@ export default function SearchBar({ onSearch, currentQuery, imageMode, onImageMo
         </div>
       </div>
 
-      <div className="google-suggestions-bar" aria-label="Categorii rapide">
-        <div className="google-suggestions-scroll">
-          {QUICK_SEARCHES.map(({ label, emoji }) => (
+      <div className="emoji-grid" role="group" aria-label="Alege un desen">
+        {QUICK_SEARCHES.map(({ label, q, emoji }) => {
+          const customFile = CUSTOM_ICON_FILES[label];
+          const src = customFile ? `${import.meta.env.BASE_URL}icons/${customFile}` : topicIcons[label];
+          return (
             <button
               key={label}
               type="button"
-              className="google-sug-chip"
-              onClick={() => onSearch(label)}
+              className={`emoji-btn ${src ? 'has-img' : ''} ${currentQuery === q ? 'active' : ''}`}
+              onClick={() => onSearch(q)}
+              aria-label={label}
+              title={label}
             >
-              <span aria-hidden="true">{emoji}</span>
-              <span>{label}</span>
+              <TopicIcon emoji={emoji} src={src} />
             </button>
-          ))}
-        </div>
+          );
+        })}
       </div>
     </div>
   );

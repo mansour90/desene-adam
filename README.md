@@ -117,3 +117,9 @@ GitHub Pages servește fișiere statice și nu poate rula middleware-ul Vite. C�
 6. La următorul push pe `main`, workflow-ul reconstruiește și publică aplicația.
 
 Originea publică `https://mansour90.github.io` și originile locale de dezvoltare sunt deja permise în `cloudflare/wrangler.toml`. Dacă domeniul site-ului se schimbă, actualizează `ALLOWED_ORIGINS` și redeployează Worker-ul. Configurația completă se află în [cloudflare/README.md](cloudflare/README.md).
+
+## Poze pe butoanele de pe ecranul de start
+
+Butoanele își iau singure poza (prima imagine colorată din căutare) și o rețin în aplicație; cât timp nu există poză, se vede emoji-ul. Cererile pornesc una câte una, la ~1,2 secunde, deci primele secunde după prima deschidere poze apar treptat.
+
+Ca să folosești propriile poze: pune fișierul (PNG/JPG pătrat) în `public/icons/` și trece-l în `CUSTOM_ICON_FILES` din `src/components/SearchBar.jsx`, de ex. `{ 'Spider-Man': 'spiderman.png' }`. Ele au prioritate. Pentru a re-aduce pozele automate, șterge `adam-topic-icons-v1` din datele site-ului în browser.

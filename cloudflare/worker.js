@@ -92,6 +92,58 @@ function constantTimeEqual(left, right) {
   return mismatch === 0;
 }
 
+async function searchBrave(rawQuery, mode, env) {
+  const topic = rawQuery
+    .replace(/\b(?:coloring|colouring)\s*(?:pages?|sheets?|books?)?\b/gi, ' ')
+    .replace(/\bde\s+colorat\b|\bplan(?:ș|s)e\b/gi, ' ')
+    .replace(/\s+/g, ' ')
+    .trim();
+  const q = mode === 'color' ? `${topic} colored illustration` : `${topic} coloring page black and white outline`;
+  const url = new URL('https://api.search.brave.com/res/v1/images/search');
+  url.searchParams.set('q', q);
+  url.searchParams.set('count', '60');
+  url.searchParams.set('safesearch', 'strict');
+  const response = await fetch(url, {
+    headers: { 'Accept': 'application/json', 'X-Subscription-Token': env.BRAVE_API_KEY }
+  });
+  if (!response.ok) return { error: response.status, results: [] };
+  const data = await response.json();
+  return { error: null, results: Array.isArray(data.results) ? data.results : [] };
+}
+
+async function mapBraveItems(results, rawQuery, requestUrl, env) {
+  const seen = new Set();
+  const items = [];
+  for (const [index, result] of results.entries()) {
+    const original = result?.properties?.url;
+    if (!original || seen.has(original) || !isPublicImageUrl(original)) continue;
+    seen.add(original);
+    const expiresAt = Math.floor(Date.now() / 1000) + 86400;
+    const signature = await signImageUrl(original, expiresAt, env.IMAGE_PROXY_SECRET);
+    const proxyUrl = new URL('/api/proxy-image', requestUrl.origin);
+    proxyUrl.searchParams.set('url', original);
+    proxyUrl.searchParams.set('exp', String(expiresAt));
+    proxyUrl.searchParams.set('sig', signature);
+    items.push({
+      id: `brave_${index}_${crypto.randomUUID?.() || Date.now()}`,
+      title: String(result.title || `${rawQuery} de colorat`).slice(0, 80),
+      rawTitle: result.title || rawQuery,
+      searchTerm: rawQuery,
+      previewUrl: result.thumbnail?.src || original,
+      originalUrl: original,
+      proxyUrl: proxyUrl.href,
+      width: Number(result.properties.width) || 1200,
+      height: Number(result.properties.height) || 1600,
+      mime: 'image/jpeg',
+      license: 'Rezultat Brave Search; verifică drepturile la sursă înainte de utilizare.',
+      artist: result.source || 'Brave Search',
+      sourceUrl: result.url || original
+    });
+    if (items.length >= 40) break;
+  }
+  return items;
+}
+
 async function searchImages(request, env) {
   const requestUrl = new URL(request.url);
   const rawQuery = (requestUrl.searchParams.get('q') || '').trim();
@@ -103,6 +155,15 @@ async function searchImages(request, env) {
   }
   if (!env.IMAGE_PROXY_SECRET) {
     return jsonResponse(request, env, { error: 'Worker-ul nu are configurat IMAGE_PROXY_SECRET.' }, 503);
+  }
+
+  if (env.BRAVE_API_KEY) {
+    const brave = await searchBrave(rawQuery, mode, env);
+    if (brave.error) {
+      return jsonResponse(request, env, { error: `Brave Search a răspuns cu HTTP ${brave.error}.`, items: [] }, 502);
+    }
+    const items = await mapBraveItems(brave.results, rawQuery, requestUrl, env);
+    return jsonResponse(request, env, { items, total: items.length });
   }
 
   const query = normalizeSearchQuery(rawQuery, mode);
@@ -310,7 +371,7 @@ export default {
     try {
       if (url.pathname === '/api/search-images') return await searchImages(request, env);
       if (url.pathname === '/api/proxy-image') return await proxyImage(request, env);
-      if (url.pathname === '/health') return jsonResponse(request, env, { ok: true, service: 'desene-adam-bing-search' });
+      if (url.pathname === '/health') return jsonResponse(request, env, { ok: true, service: 'desene-adam-bing-search', provider: env.BRAVE_API_KEY ? 'brave' : 'bing' });
       return jsonResponse(request, env, { error: 'Endpoint inexistent.' }, 404);
     } catch (error) {
       console.error('Cloudflare Worker error:', error);
