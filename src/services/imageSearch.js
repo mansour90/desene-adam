@@ -53,6 +53,8 @@ export function getRelatedSuggestions(query) {
 }
 
 function getWikimediaSearchTerms(query, mode) {
+  if (mode === 'color') return [];
+
   const topic = query
     .normalize('NFD')
     .replace(/[\u0300-\u036f]/g, '')
@@ -80,8 +82,24 @@ function getWikimediaSearchTerms(query, mode) {
     })[word] || word)
     .join(' ');
 
-  if (!topic) return [];
-  return mode === 'lineart' ? [`${topic} coloring`, topic] : [topic];
+  return topic ? [`${topic} coloring page`] : [];
+}
+
+function isColoringPageResult(page) {
+  const info = page.imageinfo?.[0];
+  const metadata = info?.extmetadata || {};
+  const text = [
+    page.title,
+    metadata.ImageDescription?.value,
+    metadata.ObjectName?.value
+  ]
+    .filter(Boolean)
+    .join(' ')
+    .replace(/<[^>]*>/g, ' ')
+    .replace(/&(?:nbsp|amp|quot|#39);/g, ' ')
+    .toLowerCase();
+
+  return /\b(coloring page|coloring pages|coloring book|colouring page|colouring book|line art|line drawing|outline|black and white|black-and-white|b&w|bw\d*)\b/.test(text);
 }
 
 async function searchWikimediaImages(query, offset, mode) {
@@ -112,7 +130,10 @@ async function searchWikimediaImages(query, offset, mode) {
         const info = page.imageinfo?.[0];
         const width = Number(info?.width) || 0;
         const height = Number(info?.height) || 0;
-        return info?.url && info.mime?.startsWith('image/') && (width >= 600 || height >= 600);
+        return info?.url
+          && info.mime?.startsWith('image/')
+          && (width >= 600 || height >= 600)
+          && isColoringPageResult(page);
       })
       .map((page) => {
         const info = page.imageinfo[0];
@@ -193,11 +214,17 @@ export async function searchColoringImages(query, offset = 0, mode = 'lineart') 
     };
   }
 
-  const fallback = await searchWikimediaImages(cleanQuery, offset, mode);
-  if (fallback.items.length > 0) {
+  if (mode === 'lineart') {
+    const fallback = await searchWikimediaImages(cleanQuery, offset, mode);
+    if (fallback.items.length > 0) {
+      return { ...fallback, suggestions };
+    }
+
+    if (workerError) throw workerError;
     return { ...fallback, suggestions };
   }
+
   if (workerError) throw workerError;
 
-  return { ...fallback, suggestions };
+  return { items: [], suggestions, total: 0 };
 }

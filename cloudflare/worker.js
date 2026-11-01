@@ -202,14 +202,7 @@ async function searchImages(request, env) {
     return jsonResponse(request, env, { error: `Bing a răspuns cu HTTP ${bingError}.`, items: [] }, 502);
   }
 
-  let items = await mapMatchesToItems(matches);
-  if (items.length === 0) {
-    ({ error: bingError, matches } = await searchBing('+filterui:imagesize-large'));
-    if (bingError) {
-      return jsonResponse(request, env, { error: `Bing a răspuns cu HTTP ${bingError}.`, items: [] }, 502);
-    }
-    items = await mapMatchesToItems(matches);
-  }
+  const items = await mapMatchesToItems(matches);
 
   return jsonResponse(request, env, { items, total: items.length });
 }

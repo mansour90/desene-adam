@@ -24,7 +24,9 @@ test('Bing search maps results and returns a signed Worker image proxy URL', asy
   };
   const encoded = JSON.stringify(bingItem).replaceAll('"', '&quot;');
   globalThis.fetch = async (input) => {
-    assert.match(String(input), /^https:\/\/www\.bing\.com\/images\/search\?/);
+    const url = new URL(String(input));
+    assert.match(url.href, /^https:\/\/www\.bing\.com\/images\/search\?/);
+    assert.match(url.searchParams.get('qft'), /color2-color/);
     return new Response(`<a m="${encoded}"></a>`, {
       status: 200,
       headers: { 'Content-Type': 'text/html' }
@@ -45,26 +47,13 @@ test('Bing search maps results and returns a signed Worker image proxy URL', asy
   assert.ok(new URL(body.items[0].proxyUrl).searchParams.has('sig'));
 });
 
-test('Bing search retries without the strict image type filter when it finds no results', async () => {
-  const bingItem = {
-    t: 'SpongeBob coloring page',
-    murl: 'https://images.example.test/drawing.png',
-    turl: 'https://th.bing.com/th?id=test',
-    purl: 'https://source.example.test/page'
-  };
+test('Bing line-art search never returns generic images when its strict filter has no matches', async () => {
   let requestCount = 0;
   globalThis.fetch = async (input) => {
     const url = new URL(String(input));
     requestCount += 1;
-    if (requestCount === 1) {
-      assert.match(url.searchParams.get('qft'), /photo-linedrawing/);
-      return new Response('<html></html>', { status: 200 });
-    }
-    assert.equal(url.searchParams.get('qft'), '+filterui:imagesize-large');
-    return new Response(`<a m="${JSON.stringify(bingItem).replaceAll('"', '&quot;')}"></a>`, {
-      status: 200,
-      headers: { 'Content-Type': 'text/html' }
-    });
+    assert.match(url.searchParams.get('qft'), /photo-linedrawing/);
+    return new Response('<html></html>', { status: 200 });
   };
 
   const response = await worker.fetch(new Request(
@@ -74,8 +63,8 @@ test('Bing search retries without the strict image type filter when it finds no 
   const body = await response.json();
 
   assert.equal(response.status, 200);
-  assert.equal(requestCount, 2);
-  assert.equal(body.items.length, 1);
+  assert.equal(requestCount, 1);
+  assert.equal(body.items.length, 0);
 });
 
 test('signed image proxy serves images and rejects unsigned URLs', async () => {
