@@ -1,5 +1,5 @@
 import React, { useState, useEffect } from 'react';
-import { Contrast, Palette, Search, X } from 'lucide-react';
+import { Contrast, LayoutGrid, List, Palette, Search, X } from 'lucide-react';
 import { useTopicIcons } from '../hooks/useTopicIcons';
 
 // Butoane doar cu poză (fără text). `q` = termenul căutat, `en` = căutarea pentru poza butonului,
@@ -46,7 +46,14 @@ function TopicIcon({ emoji, src }) {
   );
 }
 
-export default function SearchBar({ onSearch, currentQuery, imageMode, onImageModeChange }) {
+export default function SearchBar({
+  onSearch,
+  currentQuery,
+  imageMode,
+  onImageModeChange,
+  columnsPerRow,
+  onColumnsPerRowChange
+}) {
   const [inputValue, setInputValue] = useState(currentQuery || '');
   const topicIcons = useTopicIcons(QUICK_SEARCHES);
 
@@ -105,6 +112,28 @@ export default function SearchBar({ onSearch, currentQuery, imageMode, onImageMo
       </form>
 
       <div className="search-options-row">
+        <div className="gallery-layout-toggle" role="group" aria-label="Număr de poze pe rând">
+          <button
+            type="button"
+            className={`gallery-layout-button ${columnsPerRow === 2 ? 'active' : ''}`}
+            onClick={() => onColumnsPerRowChange(2)}
+            aria-label="Afișează două poze pe rând"
+            title="Două poze pe rând"
+            aria-pressed={columnsPerRow === 2}
+          >
+            <LayoutGrid size={18} />
+          </button>
+          <button
+            type="button"
+            className={`gallery-layout-button ${columnsPerRow === 1 ? 'active' : ''}`}
+            onClick={() => onColumnsPerRowChange(1)}
+            aria-label="Afișează o poză pe rând"
+            title="O poză pe rând"
+            aria-pressed={columnsPerRow === 1}
+          >
+            <List size={18} />
+          </button>
+        </div>
         <div className="gallery-mode-toggle" role="group" aria-label="Tipul desenelor">
           <button
             type="button"

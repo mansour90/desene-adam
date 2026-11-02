@@ -1,14 +1,10 @@
 import React, { useState } from 'react';
 import {
   Mic,
-  MicOff,
-  Volume2,
   X,
   AlertTriangle,
   Copy,
   Check,
-  ExternalLink,
-  Sparkles,
   RefreshCw
 } from 'lucide-react';
 
@@ -16,10 +12,10 @@ export default function VoiceModal({
   isOpen,
   onClose,
   isListening,
+  transcript = '',
   errorInfo,
   onStartListening,
-  onStopListening,
-  onSelectSuggestion
+  onStopListening
 }) {
   const [copied, setCopied] = useState(false);
 
@@ -31,25 +27,12 @@ export default function VoiceModal({
     setTimeout(() => setCopied(false), 2500);
   };
 
-  const QUICK_VOICE_TILES = [
-    { title: 'SpongeBob', emoji: '🧽' },
-    { title: 'Dinozauri', emoji: '🦖' },
-    { title: 'Mașini de curse', emoji: '🏎️' },
-    { title: 'Spider-Man', emoji: '🕷️' },
-    { title: 'Sonic', emoji: '🦔' },
-    { title: 'Elsa Frozen', emoji: '❄️' },
-    { title: 'Pisicuțe', emoji: '🐱' },
-    { title: 'Pikachu', emoji: '⚡' },
-    { title: 'Roboți', emoji: '🤖' },
-    { title: 'Prințese', emoji: '👑' }
-  ];
-
   const isBrave = errorInfo?.isBrave || false;
-  const isNetworkError = errorInfo?.type === 'network';
+  const hasTranscript = Boolean(transcript.trim());
 
   return (
     <div className="voice-modal-backdrop" role="dialog" aria-modal="true">
-      <div className="voice-modal-content">
+      <div className={`voice-modal-content ${errorInfo ? 'has-error' : ''}`}>
         <button
           type="button"
           className="voice-modal-close"
@@ -59,33 +42,23 @@ export default function VoiceModal({
           <X size={24} />
         </button>
 
-        {/* Zona Microfon Mare Central */}
         <div className="voice-modal-mic-zone">
           <button
             type="button"
-            className={`voice-modal-big-mic ${isListening ? 'listening' : ''}`}
+            className={`voice-modal-big-mic ${isListening ? 'listening' : ''} ${hasTranscript ? 'detected' : ''}`}
             onClick={isListening ? onStopListening : onStartListening}
             aria-label={isListening ? 'Oprește' : 'Vorbește'}
           >
-            {isListening && <span className="mic-outer-ring"></span>}
             <Mic size={48} className="big-mic-icon" />
           </button>
 
-          <h3 className="voice-modal-title">
-            {isListening
-              ? 'Te ascult... Spune ce vrei să colorezi!'
-              : errorInfo
-              ? 'Hopa! Ceva a împiedicat microfonul'
-              : 'Apasă pe microfon și vorbește!'}
-          </h3>
-          <p className="voice-modal-subtitle">
-            {isListening
-              ? 'Rostește clar în limba română (ex: SpongeBob, dinozauri, mașini)...'
-              : 'Poți spune orice personaj, animal sau obiect preferat!'}
-          </p>
+          {hasTranscript && (
+            <p className="voice-modal-transcript has-text" aria-live="polite" aria-atomic="true">
+              {transcript}
+            </p>
+          )}
         </div>
 
-        {/* Panou dedicat pentru browserul Brave / Network Error */}
         {errorInfo && (
           <div className="brave-fix-card">
             <div className="fix-card-header">
@@ -155,30 +128,6 @@ export default function VoiceModal({
           </div>
         )}
 
-        {/* Zona de opțiuni rapide (Copilul poate alege imediat fără să tasteze) */}
-        <div className="quick-voice-section">
-          <div className="quick-voice-header">
-            <Sparkles size={18} className="sparkle-icon" />
-            <span>Sau alege rapid un desen preferat:</span>
-          </div>
-
-          <div className="quick-voice-grid">
-            {QUICK_VOICE_TILES.map((tile) => (
-              <button
-                key={tile.title}
-                type="button"
-                className="quick-tile-btn"
-                onClick={() => {
-                  onSelectSuggestion(tile.title);
-                  onClose();
-                }}
-              >
-                <span className="tile-emoji">{tile.emoji}</span>
-                <span className="tile-title">{tile.title}</span>
-              </button>
-            ))}
-          </div>
-        </div>
       </div>
     </div>
   );

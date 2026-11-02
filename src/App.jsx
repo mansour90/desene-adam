@@ -32,8 +32,9 @@ export default function App() {
 
   const [selectedImage, setSelectedImage] = useState(null);
   const [isParentSettingsOpen, setIsParentSettingsOpen] = useState(false);
-  const [isGoogleConnected, setIsGoogleConnected] = useState(false);
+  const [isGoogleConnected, setIsGoogleConnected] = useState(() => isGoogleDriveConnected());
   const [imageMode, setImageMode] = useState('lineart');
+  const [columnsPerRow, setColumnsPerRow] = useState(2);
   const [showScrollTop, setShowScrollTop] = useState(false);
   const [activeTab, setActiveTab] = useState('home');
   const [favorites, setFavorites] = useState(() => readImageCollection(FAVORITES_STORAGE_KEY));
@@ -43,11 +44,6 @@ export default function App() {
   const [sendMessage, setSendMessage] = useState('');
   const [previewMode, setPreviewMode] = useState('lineart');
   const [previewImages, setPreviewImages] = useState([]);
-
-  // Verifică statusul Google Drive la încărcare
-  useEffect(() => {
-    setIsGoogleConnected(isGoogleDriveConnected());
-  }, []);
 
   useEffect(() => {
     writeImageCollection(FAVORITES_STORAGE_KEY, favorites);
@@ -176,6 +172,8 @@ export default function App() {
           currentQuery={query}
           imageMode={imageMode}
           onImageModeChange={handleImageModeChange}
+          columnsPerRow={columnsPerRow}
+          onColumnsPerRowChange={setColumnsPerRow}
         />
 
         {/* Galerie stil Google Images (Presetat: Dimensiune Mari + Doar de colorat) */}
@@ -191,12 +189,13 @@ export default function App() {
           onToggleFavorite={handleToggleFavorite}
           onToggleQueue={handleToggleQueue}
           onSelectImage={handleSelectImage}
+          columnsPerRow={columnsPerRow}
         />
           </>
         ) : activeTab === 'favorites' ? (
           <ImageCollection
             title="Favorite"
-            emptyText="Apasă inima de pe o poză ca să o păstrezi aici."
+            emptyText="Atinge de două ori o poză ca să o adaugi la favorite."
             items={favorites}
             favorites={favorites}
             queue={sendQueue}
@@ -208,7 +207,7 @@ export default function App() {
           <>
             <ImageCollection
               title="Poze de trimis"
-              emptyText="Adaugă planșe alb-negru din Acasă folosind butonul din colțul pozei."
+              emptyText="Ține apăsat pe o planșă alb-negru din Acasă ca să o adaugi aici."
               items={sendQueue}
               favorites={favorites}
               queue={sendQueue}
@@ -275,7 +274,6 @@ export default function App() {
           onSelectImage={(image) => handleSelectImage(image, previewMode)}
           onClose={handleClosePreview}
           isGoogleConnected={isGoogleConnected}
-          onOpenParentSettings={() => setIsParentSettingsOpen(true)}
         />
       )}
 

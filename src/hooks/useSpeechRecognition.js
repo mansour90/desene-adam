@@ -8,7 +8,7 @@ export function useSpeechRecognition({ onResult } = {}) {
   const [isListening, setIsListening] = useState(false);
   const [transcript, setTranscript] = useState('');
   const [errorInfo, setErrorInfo] = useState(null);
-  const [isSupported, setIsSupported] = useState(false);
+  const [isSupported] = useState(() => speechServiceInstance.checkSupported());
 
   const onResultRef = useRef(onResult);
   onResultRef.current = onResult;
@@ -16,7 +16,6 @@ export function useSpeechRecognition({ onResult } = {}) {
   const errorTimeoutRef = useRef(null);
 
   useEffect(() => {
-    setIsSupported(speechServiceInstance.checkSupported());
     return () => {
       if (errorTimeoutRef.current) clearTimeout(errorTimeoutRef.current);
       speechServiceInstance.stopListening();
@@ -35,6 +34,9 @@ export function useSpeechRecognition({ onResult } = {}) {
     speechServiceInstance.startListening({
       onStart: () => {
         setIsListening(true);
+      },
+      onTranscript: (text) => {
+        setTranscript(text);
       },
       onResult: (text) => {
         setTranscript(text);

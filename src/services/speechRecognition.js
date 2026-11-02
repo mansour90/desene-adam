@@ -26,7 +26,7 @@ export class SpeechService {
   /**
    * Pornește ascultarea vocii cu instanță proaspătă
    */
-  async startListening({ onResult, onError, onEnd, onStart }) {
+  async startListening({ onResult, onTranscript, onError, onEnd, onStart }) {
     if (!this.isSupported || !this.SpeechRecognitionClass) {
       if (onError) onError({
         type: 'unsupported',
@@ -44,10 +44,11 @@ export class SpeechService {
 
       recognition.lang = 'ro-RO';
       recognition.continuous = false;
-      recognition.interimResults = false;
+      recognition.interimResults = true;
       recognition.maxAlternatives = 1;
 
       let hasEnded = false;
+      let hasDeliveredResult = false;
 
       recognition.onstart = () => {
         this.isListening = true;
@@ -55,11 +56,23 @@ export class SpeechService {
       };
 
       recognition.onresult = (event) => {
-        if (event.results && event.results.length > 0) {
-          const transcript = event.results[0][0]?.transcript || '';
-          if (onResult && transcript.trim()) {
-            onResult(transcript.trim());
-          }
+        let visibleTranscript = '';
+        let finalTranscript = '';
+
+        const results = event.results || [];
+        for (let index = 0; index < results.length; index += 1) {
+          const result = results[index];
+          const text = result[0]?.transcript || '';
+          visibleTranscript += `${text} `;
+          if (result.isFinal) finalTranscript += `${text} `;
+        }
+
+        if (visibleTranscript.trim()) {
+          onTranscript?.(visibleTranscript.trim());
+        }
+        if (!hasDeliveredResult && finalTranscript.trim()) {
+          hasDeliveredResult = true;
+          onResult?.(finalTranscript.trim());
         }
       };
 

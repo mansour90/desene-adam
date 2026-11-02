@@ -21,8 +21,7 @@ export default function ImagePreview({
   imageMode = 'lineart',
   onSelectImage,
   onClose,
-  isGoogleConnected,
-  onOpenParentSettings
+  isGoogleConnected
 }) {
   const [isProcessing, setIsProcessing] = useState(false);
   const [uploadProgress, setUploadProgress] = useState(0);
@@ -184,11 +183,9 @@ export default function ImagePreview({
             onClick={onClose}
             aria-label="Înapoi la desene"
           >
-            <ArrowLeft size={28} />
+            <ArrowLeft size={20} />
             <span className="back-btn-label">ÎNAPOI LA DESENE</span>
           </button>
-
-          <span className="preview-title-badge">{image.title}</span>
         </div>
 
         {/* Zona principală de afișare a imaginii */}
@@ -290,26 +287,6 @@ export default function ImagePreview({
           </button>
         </div>
 
-        {/* Metadate și sursă curată */}
-        <div className="preview-meta-footer">
-          <div className="meta-info-item">
-            <span>Licență: <strong>{image.license || 'Liberă / Public Domain'}</strong></span>
-            {image.artist && <span> • Autor: {image.artist}</span>}
-          </div>
-
-          {!isGoogleConnected && (
-            <div className="drive-hint">
-              <span>💡 Părinții pot conecta Google Drive din </span>
-              <button
-                type="button"
-                className="inline-parent-link"
-                onClick={onOpenParentSettings}
-              >
-                Mod Părinte
-              </button>
-            </div>
-          )}
-        </div>
       </div>
     </div>
   );

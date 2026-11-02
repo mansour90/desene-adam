@@ -1,6 +1,6 @@
-import React, { useState } from 'react';
+import React from 'react';
 import ImageCard from './ImageCard';
-import { Loader2, Frown, LayoutGrid, List } from 'lucide-react';
+import { Loader2, Frown } from 'lucide-react';
 import { getImageCollectionKey } from '../utils/imageCollections';
 
 export default function ImageGallery({
@@ -13,10 +13,9 @@ export default function ImageGallery({
   queue = [],
   onToggleFavorite,
   onToggleQueue,
-  onSelectImage
+  onSelectImage,
+  columnsPerRow
 }) {
-  const [columnsPerRow, setColumnsPerRow] = useState(2);
-
   return (
     <section className="google-gallery-section" aria-label="Rezultate căutare imagini de colorat">
       {/* Stare 1: Se încarcă rezultatele */}
@@ -60,30 +59,6 @@ export default function ImageGallery({
       {/* Stare 4: Grid-ul dens de imagini stil Google Images */}
       {!isLoading && !error && images.length > 0 && (
         <>
-          <div className="gallery-layout-controls">
-            <div className="gallery-layout-toggle" role="group" aria-label="Număr de poze pe rând">
-              <button
-                type="button"
-                className={`gallery-layout-button ${columnsPerRow === 2 ? 'active' : ''}`}
-                onClick={() => setColumnsPerRow(2)}
-                aria-label="Afișează două poze pe rând"
-                title="Două poze pe rând"
-                aria-pressed={columnsPerRow === 2}
-              >
-                <LayoutGrid size={18} />
-              </button>
-              <button
-                type="button"
-                className={`gallery-layout-button ${columnsPerRow === 1 ? 'active' : ''}`}
-                onClick={() => setColumnsPerRow(1)}
-                aria-label="Afișează o poză pe rând"
-                title="O poză pe rând"
-                aria-pressed={columnsPerRow === 1}
-              >
-                <List size={18} />
-              </button>
-            </div>
-          </div>
           <div className={`google-image-grid ${columnsPerRow === 1 ? 'is-single-column' : 'is-two-columns'}`}>
             {images.map((image) => (
               <ImageCard

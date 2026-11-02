@@ -1,15 +1,21 @@
-import React, { useEffect, useState } from 'react';
+import React, { useEffect, useRef, useState } from 'react';
 import { createPortal } from 'react-dom';
 import VoiceButton from './VoiceButton';
 import VoiceModal from './VoiceModal';
 import { useSpeechRecognition } from '../hooks/useSpeechRecognition';
+import { playCommandReceivedSound, playListeningSound } from '../services/voiceSounds';
 
 export default function VoiceSearchControl({ onSearch, onActivateHome }) {
   const [isVoiceModalOpen, setIsVoiceModalOpen] = useState(false);
-  const { isListening, errorInfo, startListening, stopListening } = useSpeechRecognition({
+  const searchTimeoutRef = useRef(null);
+  const { isListening, transcript, errorInfo, startListening, stopListening } = useSpeechRecognition({
     onResult: (spokenText) => {
-      setIsVoiceModalOpen(false);
-      onSearch?.(spokenText);
+      playCommandReceivedSound();
+      window.clearTimeout(searchTimeoutRef.current);
+      searchTimeoutRef.current = window.setTimeout(() => {
+        setIsVoiceModalOpen(false);
+        onSearch?.(spokenText);
+      }, 1200);
     }
   });
 
@@ -26,9 +32,12 @@ export default function VoiceSearchControl({ onSearch, onActivateHome }) {
     };
   }, [isVoiceModalOpen]);
 
-  const handleSelectSuggestion = (text) => {
-    setIsVoiceModalOpen(false);
-    onSearch?.(text);
+  useEffect(() => () => window.clearTimeout(searchTimeoutRef.current), []);
+
+  const handleStartListening = () => {
+    window.clearTimeout(searchTimeoutRef.current);
+    playListeningSound();
+    startListening();
   };
 
   return (
@@ -39,7 +48,7 @@ export default function VoiceSearchControl({ onSearch, onActivateHome }) {
           onToggle={() => {
             onActivateHome?.();
             setIsVoiceModalOpen(true);
-            startListening();
+            handleStartListening();
           }}
         />
       </div>
@@ -47,14 +56,15 @@ export default function VoiceSearchControl({ onSearch, onActivateHome }) {
         <VoiceModal
           isOpen={isVoiceModalOpen}
           onClose={() => {
+            window.clearTimeout(searchTimeoutRef.current);
             stopListening();
             setIsVoiceModalOpen(false);
           }}
           isListening={isListening}
+          transcript={transcript}
           errorInfo={errorInfo}
-          onStartListening={startListening}
+          onStartListening={handleStartListening}
           onStopListening={stopListening}
-          onSelectSuggestion={handleSelectSuggestion}
         />,
         document.body
       )}
